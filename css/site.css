@@ -169,7 +169,7 @@ tr.flag td { background: var(--uf-platform-status-loss-bg); }
 
 /* Overlays */
 .scrim { position: fixed; inset: 0; background: rgb(35 58 52 / 0.25); z-index: 20; }
-.uf-panel { z-index: 21; }
+.uf-panel { z-index: 21; max-width: 100vw; }
 .uf-panel form { display: contents; }
 #modal { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; background: rgb(35 58 52 / 0.25); }
 #modal[hidden], .scrim[hidden] { display: none; }
@@ -328,3 +328,23 @@ tr.flag td { background: var(--uf-platform-status-loss-bg); }
 .uf-steps--nav::after { width: max(28px, calc((var(--pos) - 0.5) * 100% / var(--n) - 4px)); }
 .uf-steps--nav::before { background: linear-gradient(90deg, rgb(47 93 80 / .22) 0 calc((var(--cur) - 0.5) * 100% / var(--n) + 18px), transparent 0), rgb(255 255 255 / .55); }
 .uf-steps--nav li.done::before, .uf-steps--nav li[aria-current="step"]::before { background: #fff; }
+
+/* ---- Agent: request review, sources, settings ---- */
+.nrseg { display: flex; margin-bottom: 16px; }
+.nrseg button { flex: 1; justify-content: center; }
+.reqt td:nth-child(2) { min-width: 220px; }
+.reqt .edit.rf { width: 82%; margin: 0; padding: 6px 8px; border-color: var(--uf-platform-line); background: rgb(255 255 255 / .6); }
+.reqt .edit.rf::placeholder { color: var(--uf-platform-text-secondary); }
+.reqt .uf-second, .calc .uf-second { display: block; }
+.src { display: inline-block; font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 10px; background: rgb(35 58 52 / .08); color: var(--uf-platform-text); white-space: nowrap; }
+.src--missing { background: rgb(160 50 50 / .12); color: var(--uf-platform-status-loss-text); }
+.src--attachment { background: rgb(47 93 80 / .12); }
+.src--person { background: rgb(47 93 80 / .2); color: var(--uf-prim-green-900, #233A34); }
+.srcc { white-space: nowrap; }
+.rowbtns { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.checks .check { flex-direction: row; align-items: center; justify-content: space-between; }
+ul.plain { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.chk { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.agbtns { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0 8px; }
+.agbtns #agout { font-size: 14px; }
+.uf-pill--attention { background: rgb(180 120 30 / .15); }

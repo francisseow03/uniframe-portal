@@ -47,7 +47,7 @@ window.UF_DATA = {
       chapters: [
         { title: 'Systeemwanden', lines: [GLAS(42.5), DICHT(28), L('Aansluitprofielen en akoestische afdichting', 1, 'post', 540.00, 20)] },
         { title: 'Kozijnen en deuren', lines: [KOZ(9), DEUR(9), L('Hang- en sluitwerk, cilinder volgens sluitplan', 9, 'set', 149.00, 15)] },
-        { title: 'Montage en transport', lines: [MONT(96), L('Transport en afvoer verpakking', 1, 'post', 0, 20)] }],
+        { title: 'Montage en transport', lines: [MONT(96), Object.assign(L('Transport en afvoer verpakking', 1, 'post', 0, 20), { hint: { price: 450, from: 'P2610-004' } })] }],
       files: [{ name: 'Tekening begane grond.pdf', from: 'Wallsz, 18 Nov' }, { name: 'Deurstaat KPLD rev B.xlsx', from: 'Wallsz, 18 Nov' }],
       timeline: [['Agent made revision R2: 9 doors instead of 8, after Paul\'s mail of 19 Nov', '20 Nov 14:02'], ['Agent read the door schedule and added hinge sets', '18 Nov 16:40'], ['Arjan set the margin on chapter 1 to 22 %', '18 Nov 15:12']] }),
     'O2611-008': q({ id: 'O2611-008', calc: 'C2611-008', project: 'P2611-007', date: '2026-11-06', valid: '2026-12-06', status: 'Sent', sent: '2026-11-06',
@@ -116,11 +116,13 @@ window.UF_DATA = {
     { name: 'Deurenfabriek Oost', kind: 'Supplier', contact: 'Verkoop', email: 'verkoop@deurenfabriekoost.nl', city: 'Doetinchem' },
   ],
   articles: [
-    { code: 'SW-GL-30', name: 'Systeemwand enkel glas, h 3000', group: 'Systeemwanden', unit: 'm1', cost: 252.00, margin: 22, stock: 0 },
-    { code: 'SW-DI-30', name: 'Systeemwand dicht, h 3000', group: 'Systeemwanden', unit: 'm1', cost: 158.00, margin: 22, stock: 0 },
-    { code: 'KZ-ST-93', name: 'Stalen kozijn 930 × 2315 met bovenlicht', group: 'Kozijnen', unit: 'st', cost: 336.00, margin: 21, stock: 14 },
-    { code: 'DR-HPL-93', name: 'Opdekdeur HPL RAL 9010', group: 'Deuren', unit: 'st', cost: 244.00, margin: 21, stock: 3 },
-    { code: 'HS-CIL-01', name: 'Hang- en sluitwerk met cilinder', group: 'Beslag', unit: 'set', cost: 149.00, margin: 20, stock: 22 },
+    { code: 'SW-GL-30', key: 'wall', name: 'Systeemwand enkel glas, h 3000', desc: 'Systeemwand enkel glas, aluminium profiel, hoogte 3000 mm', group: 'Systeemwanden', unit: 'm1', cost: 252.00, margin: 22, stock: 0, source: 'Supplier', supplier: 'Glas Centrum Nederland' },
+    { code: 'SW-DI-30', key: 'wall-solid', name: 'Systeemwand dicht, h 3000', desc: 'Systeemwand dicht, dubbele gipsbeplating, hoogte 3000 mm', group: 'Systeemwanden', unit: 'm1', cost: 158.00, margin: 22, stock: 0, source: 'Own factory', supplier: '' },
+    { code: 'KZ-ST-93', key: 'frame', name: 'Stalen kozijn 930 × 2315 met bovenlicht', desc: 'Stalen kozijn met bovenlicht, 930 × 2315 mm', group: 'Kozijnen', unit: 'st', cost: 336.00, margin: 21, stock: 14, source: 'Supplier', supplier: 'Metaalwerk Veenendaal' },
+    { code: 'DR-HPL-93', key: 'door', name: 'Opdekdeur HPL RAL 9010', desc: 'Opdekdeur, HPL afwerking, RAL 9010', group: 'Deuren', unit: 'st', cost: 244.00, margin: 21, stock: 3, source: 'Supplier', supplier: 'Deurenfabriek Oost' },
+    { code: 'HS-CIL-01', key: 'hw', name: 'Hang- en sluitwerk met cilinder', desc: 'Hang- en sluitwerk, cilinder volgens sluitplan', group: 'Beslag', unit: 'set', cost: 149.00, margin: 20, stock: 22, source: 'Supplier', supplier: 'Deurenfabriek Oost' },
+    { code: 'MT-01', key: 'install', name: 'Montage per uur', desc: 'Montage systeemwanden en kozijnen', group: 'Montage', unit: 'uur', cost: 47.50, margin: 20, stock: 0, source: 'Own team', supplier: '' },
+    { code: 'TR-01', key: 'transport', name: 'Transport en afvoer verpakking', desc: 'Transport en afvoer verpakking', group: 'Transport', unit: 'post', cost: 380.00, margin: 20, stock: 0, source: 'Own team', supplier: '' },
   ],
   activity: [
     ['Drafted 2 questions to Bouwbedrijf Hoekstra', '22 Nov 09:14', 'agent'],

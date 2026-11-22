@@ -9,6 +9,10 @@ const LS = { get(k, d) { try { const v = localStorage.getItem(k); return v ? JSO
 const SCOPES = 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send';
 
 const demo = [
+  { id: 'd7', folder: 'inbox', lane: ['active', 'New request'], from: 'Daan Verhoeven (verkoop)', email: 'daan@uniframe.nl', subject: 'Doorgestuurd: aanvraag kantoorverdieping Utrecht', date: '23 Nov', unread: true,
+    body: 'Van: Marloes de Graaf <marloes@degraaf-interieur.nl>\nDoorgestuurd door: Daan Verhoeven (verkoop)\nOnderwerp: Aanvraag kantoorverdieping Utrecht\n\nHoi Arjan,\n\nHieronder alles van De Graaf Interieurbouw. Voor de kantoorverdieping aan het Stationsplein 4 in Utrecht willen ze een glazen systeemwand van 12 m, hoogte 3,0 m, met 4 deuren en mat folie op ooghoogte. Enkel glas, 10 mm. Oplevering in maart. Plattegrond en deurstaat zitten in de bijlage. Let op: de deurstaat toont 5 deuren.\n\nGroet,\nDaan Verhoeven\nUniframe verkoop', attach: 'plattegrond.pdf, deurstaat.pdf' },
+  { id: 'd8', folder: 'inbox', lane: ['attention', 'Customer reply'], from: 'Afdeling inkoop', email: 'inkoop@hoekstra-bouw.nl', subject: 'RE: Offerte O2611-008 sporthal', date: '23 Nov', unread: true,
+    body: 'Goedemiddag,\n\nWe gaan akkoord met de offerte voor de sporthal, maar graag 2 deuren extra.\n\nGroet,\nAfdeling inkoop\nBouwbedrijf Hoekstra' },
   { id: 'd1', folder: 'inbox', lane: ['attention', 'Change to a quote'], from: 'Paul Terlouw', email: 'paul.terlouw@wallsz.nl', subject: 'RE: Politie KPLD, deur 2.14 erbij', date: '19 Nov', unread: true, star: true,
     body: 'Beste Arjan,\n\nWe hebben toch een extra deur nodig op de begane grond (2.14), zelfde uitvoering als de rest.\nKunnen jullie de offerte aanpassen?\n\nMet vriendelijke groet,\nPaul Terlouw\nWallsz',
     agent: 'I added door 2.14 as revision R2 of C2611-010 (9 doors instead of 8). The new quote is waiting for you to verify.', link: ['#/quote/O2611-010', 'Open quote O2611-010'],
@@ -31,8 +35,10 @@ const demo = [
 ];
 
 const FLAGS = LS.get('uf-mail-flags', {});
-demo.forEach(m => { if (FLAGS[m.id]) Object.assign(m, FLAGS[m.id]); });
-const keepFlags = m => { if (!m || !m.id || m.id[0] !== 'd') return; FLAGS[m.id] = { unread: !!m.unread, star: !!m.star }; LS.set('uf-mail-flags', FLAGS); };
+const ORIG = {}; demo.forEach(m => { ORIG[m.id] = { agent: m.agent, link: m.link, lane: m.lane, unread: m.unread, star: m.star, agentDone: false }; });
+const applyFlags = () => demo.forEach(m => Object.assign(m, ORIG[m.id], FLAGS[m.id] || {}));
+applyFlags();
+const keepFlags = m => { if (!m || !m.id || m.id[0] !== 'd') return; FLAGS[m.id] = { unread: !!m.unread, star: !!m.star, ...(m.agentDone ? { agent: m.agent, link: m.link, lane: m.lane, agentDone: true } : {}) }; LS.set('uf-mail-flags', FLAGS); };
 const M = {
   folder: 'inbox', open: null, q: '', token: null, live: null, compose: null,
   local: LS.get('uf-mail-local', []),
@@ -81,7 +87,7 @@ function reader(m) {
       <div class="agent__actions">${m.link ? `<a class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" href="${m.link[0]}">${esc(m.link[1])}</a>` : ''}${m.draft ? `<button class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" data-m="usedraft" data-v="${m.id}">Use the agent's reply</button>` : ''}</div></section>` : ''}
     ${m.folder === 'sent' && m.mock ? '<p class="sentnote">Sent in example mode: saved here, not delivered. Connect Gmail in Settings to send for real.</p>' : ''}
     <div class="mread__body">${esc(m.body || m.snippet || '').replace(/\n/g, '<br>')}</div>${m.attach ? `<p class="attach">${I('upload')}${esc(m.attach)}</p>` : ''}
-    <div class="mread__actions"><button class="uf-pbtn uf-pbtn--secondary" data-m="reply" data-v="${m.id}">Reply</button><button class="uf-pbtn uf-pbtn--secondary" data-m="replyall" data-v="${m.id}">Reply all</button><button class="uf-pbtn uf-pbtn--quiet" data-m="forward" data-v="${m.id}">Forward</button></div>`;
+    <div class="mread__actions">${m.folder === 'inbox' && !m.agent ? `<button class="uf-pbtn uf-pbtn--primary" data-agentread="${m.id}">${I('agent')}Read with the agent</button>` : ''}<button class="uf-pbtn uf-pbtn--secondary" data-m="reply" data-v="${m.id}">Reply</button><button class="uf-pbtn uf-pbtn--secondary" data-m="replyall" data-v="${m.id}">Reply all</button><button class="uf-pbtn uf-pbtn--quiet" data-m="forward" data-v="${m.id}">Forward</button></div>`;
 }
 function composer() {
   const c = M.compose;
@@ -181,5 +187,9 @@ window.UFMail = { render, connect, get connected() { return !!M.token; }, get un
   compose: c => startCompose({ title: 'New message', ...c }),
   send(d) { if (M.token) api('messages/send', { method: 'POST', body: JSON.stringify({ raw: rfc822(d) }) }).catch(e => window.UF.toast(e.message + '. Not sent.'));
     M.local.unshift({ id: 'l' + Date.now() + Math.floor(Math.random() * 99), folder: 'sent', from: 'You', email: d.to, to: d.to, subject: d.subject, body: d.body, attach: d.attach, date: 'Today', mock: !M.token }); LS.set('uf-mail-local', M.local); },
-  dump: () => JSON.stringify(M.local), restore: s => { M.local = JSON.parse(s); LS.set('uf-mail-local', M.local); } };
+  get: id => find(id),
+  setAgent(id, agent, link, lane) { const m = demo.find(x => x.id === id); if (!m) return; m.agent = agent; m.link = link; if (lane) m.lane = lane; m.agentDone = true; keepFlags(m); },
+  dump: () => JSON.stringify({ local: M.local, flags: FLAGS }),
+  restore: s => { const o = JSON.parse(s); M.local = Array.isArray(o) ? o : (o.local || []); LS.set('uf-mail-local', M.local);
+    if (o.flags) { Object.keys(FLAGS).forEach(k => delete FLAGS[k]); Object.assign(FLAGS, o.flags); LS.set('uf-mail-flags', FLAGS); applyFlags(); } } };
 })();
