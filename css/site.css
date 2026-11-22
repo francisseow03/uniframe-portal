@@ -379,3 +379,6 @@ ul.plain { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-d
 .subform[hidden], [data-nrpanel][hidden], [data-supplieronly][hidden] { display: none; }
 [data-nrpanel] { display: flex; flex-direction: column; gap: 16px; }
 [data-nrpanel][hidden] { display: none; }
+
+.field--num { width: 96px; text-align: right; }
+.rules select.field { width: auto; }

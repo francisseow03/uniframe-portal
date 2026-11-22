@@ -7,14 +7,17 @@ const clone = o => JSON.parse(JSON.stringify(o));
 let S = load();
 function load() { try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) {} return clone(D0); }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
-const J = D0.journey, PST = D0.purchaseSteps, TODAY = D0.today, MARGIN_FLOOR = 18;
+const J = D0.journey, PST = D0.purchaseSteps, TODAY = D0.today;
+/* Agent rules: saved with the store, read everywhere the agent decides something. */
+const RULE0 = { marginFloor: 18, tolerance: 25, reminderAfter: 3, followUpAfter: 14, paymentTerm: 14, quoteValid: 30, depositPct: 30, autoInvoice: true };
+const R = () => Object.assign({}, RULE0, S.rules || {});
 
 /* ---------- small helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const eur = n => n == null ? '–' : (n < 0 ? '− € ' : '€ ') + Math.abs(n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const eurNL = n => (n < 0 ? '− € ' : '€ ') + Math.abs(n).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const pct = m => m == null || isNaN(m) ? '–' : `<span class="${m < 0 ? 'uf-loss' : m >= 18 ? 'uf-profit' : 'uf-warn'}">${m < 0 ? '− ' + Math.abs(m) : '+ ' + m} %</span>`;
+const pct = m => m == null || isNaN(m) ? '–' : `<span class="${m < 0 ? 'uf-loss' : m >= R().marginFloor ? 'uf-profit' : 'uf-warn'}">${m < 0 ? '− ' + Math.abs(m) : '+ ' + m} %</span>`;
 const pill = ([k, t]) => `<span class="uf-pill uf-pill--${k}">${esc(t)}</span>`;
 const dt = iso => new Date(iso + 'T12:00:00Z');
 const fmt = iso => iso ? dt(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' }) : '–';
@@ -67,8 +70,19 @@ function purState(x) {
   return [x.step === 0 ? 'neutral' : 'active', x.step === 0 ? 'Draft, not sent' : PST[x.step]];
 }
 function quoteState(q) {
-  if (q.status === 'Sent') { const d = daysFrom(q.sent, TODAY); return d >= 14 ? ['attention', `Sent, no reply ${d} days`] : ['active', 'Sent']; }
+  if (q.status === 'Sent') { const d = daysFrom(q.sent, TODAY); return d >= R().followUpAfter ? ['attention', `Sent, no reply ${d} days`] : ['active', 'Sent']; }
   return { Calculating: ['neutral', 'Calculating'], 'To verify': ['attention', 'To verify'], Accepted: ['profit', 'Accepted'], Rejected: ['loss', 'Rejected'] }[q.status];
+}
+
+/* Money in and out. Today and Invoices read the same figures. */
+const reminderDue = i => i.status === 'Sent' && daysFrom(i.due, TODAY) >= R().reminderAfter && daysFrom(i.due, TODAY) - 7 * i.reminders >= R().reminderAfter;
+function toInvoiceOf(o) { return Math.round((orderTotal(o) * 1.21 - invsOf(o.id).filter(i => i.status !== 'Draft').reduce((a, i) => a + gross(i), 0)) * 100) / 100; }
+function money() {
+  const open = S.invoices.filter(i => i.status === 'Sent'), overdue = open.filter(i => invState(i)[0] === 'loss');
+  const uninv = S.orders.filter(o => o.project && P_(o.project) && [4, 5, 6].includes(stage(P_(o.project))) && toInvoiceOf(o) > 0.005);
+  const payable = S.purchases.filter(x => x.step === 4), drafts = S.invoices.filter(i => i.status === 'Draft');
+  const sum = (a, f) => Math.round(a.reduce((s, x) => s + f(x), 0) * 100) / 100;
+  return { open, overdue, uninv, payable, drafts, openSum: sum(open, gross), overdueSum: sum(overdue, gross), toInvoice: sum(uninv, toInvoiceOf), toPay: sum(payable, x => purTotal(x) * 1.21), draftSum: sum(drafts, gross) };
 }
 
 /* ---------- the journey ---------- */
@@ -169,8 +183,8 @@ const DETAIL = [];
 function table(cols, rows, detail) {
   return `<table class="uf-table uf-table--open"><thead><tr>${cols.map(c => `<th class="${c.num ? 'num' : ''}">${c.h}</th>`).join('')}</tr></thead>
   <tbody>${rows.map(r => { const d = !r._href && detail ? DETAIL.push({ cols, r, detail }) - 1 : -1;
-    return `<tr ${r._cat ? `data-cat="${esc(r._cat)}"` : ''} ${r._href ? `data-href="${r._href}" tabindex="0"` : d >= 0 ? `data-detail="${d}" tabindex="0"` : ''}>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.v(r)}</td>`).join('')}</tr>`; }).join('')}
-  <tr class="norows" ${rows.length ? 'hidden' : ''}><td colspan="${cols.length}">Nothing in this view.</td></tr></tbody></table>`;
+    return `<tr ${r._hide ? 'hidden' : ''} ${r._cat ? `data-cat="${esc(r._cat)}"` : ''} ${r._href ? `data-href="${r._href}" tabindex="0"` : d >= 0 ? `data-detail="${d}" tabindex="0"` : ''}>${cols.map(c => `<td class="${c.num ? 'num' : ''}">${c.v(r)}</td>`).join('')}</tr>`; }).join('')}
+  <tr class="norows" ${rows.some(r => !r._hide) ? 'hidden' : ''}><td colspan="${cols.length}">Nothing in this view.</td></tr></tbody></table>`;
 }
 function listPage({ title, sub, cats = [], primary, cols, rows, detail }) {
   const counts = {}; rows.forEach(r => (r._cat || '').split('|').forEach(c => { if (c) counts[c] = (counts[c] || 0) + 1; }));
@@ -214,7 +228,7 @@ function checks(q) {
   q.chapters.forEach((c, ci) => c.lines.forEach((l, li) => {
     const nr = `${ci + 1}.${li + 1}`;
     if (!l.cost) out.push({ kind: 'loss', text: `Line ${nr} "${l.desc}" has no price. ${l.hint ? `Last time (${l.hint.from}) it was ${eur(l.hint.price)}.` : 'It is not in the catalogue: enter a price. The agent does not set prices.'}`, ...(l.hint ? { fix: `data-fix="price" data-c="${ci}" data-l="${li}" data-v="${l.hint.price}"`, label: `Use ${eur(l.hint.price)}` } : {}) });
-    else if (l.margin < MARGIN_FLOOR) out.push({ kind: 'attention', text: `Line ${nr} has ${l.margin} % margin. Your floor is ${MARGIN_FLOOR} %.`, fix: `data-fix="margin" data-c="${ci}" data-l="${li}" data-v="${MARGIN_FLOOR}"`, label: `Set to ${MARGIN_FLOOR} %` });
+    else if (l.margin < R().marginFloor) out.push({ kind: 'attention', text: `Line ${nr} has ${l.margin} % margin. Your floor is ${R().marginFloor} %.`, fix: `data-fix="margin" data-c="${ci}" data-l="${li}" data-v="${R().marginFloor}"`, label: `Set to ${R().marginFloor} %` });
     if (l.src === 'missing' || (l.cost && !(l.qty > 0))) out.push({ kind: 'loss', text: `Line ${nr} has no quantity because the request does not state it. Request it from the customer or enter it.` });
     if (l.src === 'attachment') out.push({ kind: 'attention', text: `Line ${nr}: the quantity comes from a drawing or schedule. Verify it.` });
     if (l.check && l.note) out.push({ kind: 'attention', text: `Line ${nr}: ${l.note} Check the price.` });
@@ -263,7 +277,7 @@ function calcTable(q) {
         <td class="srcc">${srcLabel(l)}</td>
         <td class="num"><input class="edit num" data-c="${ci}" data-l="${li}" data-f="qty" value="${l.qty}" aria-label="Quantity" ${ro}></td><td>${esc(l.unit)}</td>
         <td class="num"><input class="edit num" data-c="${ci}" data-l="${li}" data-f="cost" value="${l.cost.toFixed(2)}" aria-label="Cost per unit" ${ro}></td>
-        <td class="num"><span class="pctcell"><input class="edit num ${l.margin < MARGIN_FLOOR ? 'warn' : ''}" data-c="${ci}" data-l="${li}" data-f="margin" value="${l.margin}" aria-label="Margin %" ${ro}> %</span></td>
+        <td class="num"><span class="pctcell"><input class="edit num ${l.margin < R().marginFloor ? 'warn' : ''}" data-c="${ci}" data-l="${li}" data-f="margin" value="${l.margin}" aria-label="Margin %" ${ro}> %</span></td>
         <td class="num">${eur(salePrice(l))}</td><td class="num">${eur(lineTotal(l))}</td></tr>`).join('')}
       ${ed ? `<tr class="addrow"><td></td><td colspan="8"><button class="linkbtn" data-addline="${ci}">+ Add line</button></td></tr>` : ''}</tbody>`).join('')}
     <tfoot><tr><td></td><td>${ed ? '<button class="linkbtn" data-addchap>+ Add chapter</button>' : ''}</td><td colspan="3"></td><td class="num">${eur(t.cost)}</td><td class="num">${pct(t.margin)}</td><td></td><td class="num strong">${eur(t.sale)}</td></tr></tfoot>
@@ -295,7 +309,7 @@ const P = {
     Object.values(S.quotes).filter(q => q.status === 'To verify').forEach(q => { const n = checks(q).filter(c => c.kind !== 'neutral').length; needs.push(['attention', 'Verify', `Quote ${q.id} for ${q.client.company}${n ? `: ${n} point${n > 1 ? 's' : ''} to check` : ''}`, `#/quote/${q.id}`, 'Open quote']); });
     Object.values(S.quotes).filter(q => q.status === 'Calculating').forEach(q => { const n = checks(q).filter(c => c.kind === 'loss').length; if (n) needs.push(['loss', 'Needs a person', `Calculation ${q.calc} for ${q.client.company}: ${n} line${n > 1 ? 's need' : ' needs'} a price or quantity`, `#/calculation/${q.calc}`, 'Open calculation']); });
     S.relations.filter(r => r.toConfirm).forEach(r => needs.push(['attention', 'Confirm', `New customer ${r.name}: check the contact details`, '#/relations', 'Open customers']));
-    S.invoices.filter(i => invState(i)[0] === 'loss').forEach(i => needs.push(['loss', 'Money', `${i.id} from ${custOfOrder(O_(i.order))} is ${invState(i)[1]}, ${eur(gross(i))}`, `#/invoice/${i.id}`, 'Open invoice']));
+    S.invoices.filter(i => invState(i)[0] === 'loss').forEach(i => needs.push(['loss', 'Money', `${i.id} from ${custOfOrder(O_(i.order))} is ${invState(i)[1]}, ${eur(gross(i))}${reminderDue(i) ? `. Reminder ${i.reminders + 1} is due` : i.reminders ? `. Reminder ${i.reminders} sent` : ''}`, `#/invoice/${i.id}`, 'Open invoice']));
     S.purchases.filter(x => purState(x)[0] === 'loss').forEach(x => needs.push(['loss', 'Supplier', `${x.supplier} is ${purState(x)[1]} for ${x.order} (${custOfOrder(O_(x.order))})`, `#/purchase/${x.id}`, 'Open purchase']));
     if (window.UFMail && window.UFMail.isUnread('d4')) needs.push(['attention', 'Needs a person', 'Complaint from De Graaf about a scratched door', '#/inbox/d4', 'Read mail']);
     S.projects.forEach(p => { const s = stage(p), n = next(p);
@@ -307,9 +321,8 @@ const P = {
       if (s === 6) needs.push(['neutral', 'Money', `${p.customer}: ${n.text}`, n.href, 'Open']); });
     S.invoices.filter(i => i.status === 'Draft' && i.kind === 'Deposit').forEach(i => needs.push(['neutral', 'Money', `Deposit invoice ${i.id} is ready to send`, `#/invoice/${i.id}`, 'Open invoice']));
     S.purchases.filter(x => x.step === 0).forEach(x => needs.push(['neutral', 'Purchase', `${x.id} to ${x.supplier} is not sent yet`, `#/purchase/${x.id}`, 'Open purchase']));
-    Object.values(S.quotes).filter(q => q.status === 'Sent' && daysFrom(q.sent, TODAY) >= 14).forEach(q => needs.push(['neutral', 'Follow-up', `${q.id} to ${q.client.company}: no reply for ${daysFrom(q.sent, TODAY)} days`, `#/quote/${q.id}`, 'Open quote']));
-    const open = S.invoices.filter(i => i.status === 'Sent'), overdue = open.filter(i => invState(i)[0] === 'loss');
-    const toInvoice = S.orders.filter(o => [4, 5, 6].includes(stage(P_(o.project)))).reduce((s, o) => s + orderTotal(o) * 1.21 - invsOf(o.id).filter(i => i.status !== 'Draft').reduce((a, i) => a + gross(i), 0), 0);
+    Object.values(S.quotes).filter(q => q.status === 'Sent' && daysFrom(q.sent, TODAY) >= R().followUpAfter).forEach(q => needs.push(['neutral', 'Follow-up', `${q.id} to ${q.client.company}: no reply for ${daysFrom(q.sent, TODAY)} days`, `#/quote/${q.id}`, 'Open quote']));
+    const M = money();
     return `${head({ title: 'Today', actions: btn('New request', 'primary', 'data-new="project"', 'plus') })}
       <p class="lead">Sunday 22 November. ${needs.length ? `${needs.length} thing${needs.length > 1 ? 's' : ''} need${needs.length > 1 ? '' : 's'} you` : 'Nothing needs you'}; the agent handled 23 since yesterday.</p>
       <div class="split"><div class="split__main">
@@ -319,7 +332,7 @@ const P = {
         ${table([{ h: 'Order', v: r => recLink(r.id) }, { h: 'Customer', v: r => esc(custOfOrder(r)) }, { h: 'Status', v: r => pill(orderState(r)) }, { h: 'Delivery', v: r => `Week ${r.week}` }, { h: 'Total', num: 1, v: r => eur(orderTotal(r)) }],
           S.orders.filter(o => stage(P_(o.project)) < 7).map(r => ({ ...r, _href: `#/order/${r.id}` })))}
       </div><aside class="split__rail">
-        <section class="rail-sec"><h2 class="uf-section-title">Money outstanding</h2><dl class="drows"><div><dt><a href="#/invoices">Open invoices</a></dt><dd>${eur(open.reduce((s, i) => s + gross(i), 0))}</dd></div><div><dt>Overdue</dt><dd class="${overdue.length ? 'uf-loss' : ''}">${eur(overdue.reduce((s, i) => s + gross(i), 0))}</dd></div><div><dt><a href="#/orders">Still to invoice</a></dt><dd>${eur(toInvoice)}</dd></div></dl></section>
+        <section class="rail-sec"><h2 class="uf-section-title">Money outstanding</h2><dl class="drows"><div><dt><a href="#/invoices/Open">Open invoices</a></dt><dd>${eur(M.openSum)}</dd></div><div><dt><a href="#/invoices/Overdue">Overdue</a></dt><dd class="${M.overdue.length ? 'uf-loss' : ''}">${eur(M.overdueSum)}</dd></div><div><dt><a href="#/invoices/Still to invoice">Still to invoice</a></dt><dd>${eur(M.toInvoice)}</dd></div><div><dt><a href="#/invoices/To pay suppliers">To pay suppliers</a></dt><dd>${eur(M.toPay)}</dd></div></dl></section>
         <section class="rail-sec"><h2 class="uf-section-title">Agent activity</h2><ul class="tl">${S.activity.slice(0, 4).map(([t, d]) => `<li><span>${esc(t)}</span><time>${esc(d)}</time></li>`).join('')}</ul><a class="linkbtn" href="#/activity">All activity</a></section>
       </aside></div>`;
   },
@@ -451,10 +464,21 @@ const P = {
       </article></div><aside class="split__rail">${agentPanel(d.delivered ? 'Delivered' : 'Ready to ship', `<p>${d.delivered ? `${esc(d.signedBy)} signed for ${lines.length} lines. ${f ? `Invoice ${f.id} is made.` : 'Make the final invoice next.'}` : 'Everything is packed. When the team is back, press Confirm delivery and type who signed.'}</p>`)}
         ${details([['Order', recLink(o.id)], ['Project', recLink(p.id)], ['Montage', `Week ${o.week}`]])}</aside></div>`;
   },
-  invoices() {
-    return listPage({ title: 'Invoices', cats: ['Draft', 'Open', 'Overdue', 'Paid'], primary: btn('Export to Exact', 'secondary', 'data-exact') + btn('New invoice', 'primary', 'data-new="invoice"', 'plus'),
-      cols: [{ h: 'Invoice', v: r => recLink(r.id) }, { h: 'Customer', v: r => esc(custOfOrder(O_(r.order))) }, { h: 'For', v: r => `${recLink(r.order)} · ${r.kind === 'Deposit' ? `deposit ${r.pct} %` : 'final'}` }, { h: 'Status', v: r => pill(invState(r)) }, { h: 'Due', v: r => fmt(r.due) }, { h: 'Exact', v: r => r.status === 'Draft' ? '–' : 'Booked' }, { h: 'Total incl. VAT', num: 1, v: r => eur(gross(r)) }],
-      rows: S.invoices.map(r => ({ ...r, _href: `#/invoice/${r.id}`, _cat: r.status === 'Paid' ? 'Paid' : r.status === 'Draft' ? 'Draft' : invState(r)[0] === 'loss' ? 'Overdue|Open' : 'Open' })) });
+  invoices(start) { start = decodeURIComponent(start || "");
+    const M = money(), cats = ['Overdue', 'Open', 'Draft', 'Still to invoice', 'To pay suppliers', 'Paid'];
+    const inv = S.invoices.map(r => ({ _href: `#/invoice/${r.id}`, id: r.id, who: custOfOrder(O_(r.order)), what: `${recLink(r.order)} · ${r.kind === 'Deposit' ? `deposit ${r.pct} %` : 'final invoice'}`, st: pill(invState(r)) + (r.status === 'Sent' && r.reminders ? ` <span class="muted">${r.reminders} reminder${r.reminders > 1 ? 's' : ''}</span>` : ''), due: fmt(r.due), amt: gross(r),
+      _cat: r.status === 'Paid' ? 'Paid' : r.status === 'Draft' ? 'Draft' : invState(r)[0] === 'loss' ? 'Overdue|Open' : 'Open' }));
+    const uninv = M.uninv.map(o => { const s = stage(P_(o.project)); return { _href: `#/order/${o.id}`, id: o.id, who: custOfOrder(o), what: s === 6 ? 'Delivered, final invoice not sent' : s === 5 ? 'Ready to ship' : 'In production', st: pill(['neutral', invsOf(o.id).some(i => i.status === 'Draft') ? 'Invoice drafted' : 'Not invoiced']), due: `Week ${o.week}`, amt: toInvoiceOf(o), _cat: 'Still to invoice' }; });
+    const pay = M.payable.map(x => ({ _href: `#/purchase/${x.id}`, id: x.id, who: x.supplier, what: `Purchase for ${recLink(x.order)}`, st: pill(['attention', 'Invoice matched, to pay']), due: fmt(x.due), amt: -Math.round(purTotal(x) * 121) / 100, _cat: 'To pay suppliers' }));
+    const rows = inv.concat(uninv, pay), counts = {}; rows.forEach(r => r._cat.split('|').forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
+    const pick = cats.includes(start) && counts[start] ? start : '';
+    const pills = [['All', rows.length, '']].concat(cats.filter(c => counts[c]).map(c => [c, counts[c], c]));
+    return `${head({ title: 'Invoices', actions: btn('Export to Exact', 'secondary', 'data-exact') + btn('New invoice', 'primary', 'data-new="invoice"', 'plus'),
+      facts: [['Open invoices', eur(M.openSum)], ['Overdue', `<span class="${M.overdue.length ? 'uf-loss' : ''}">${eur(M.overdueSum)}</span>`], ['Still to invoice', eur(M.toInvoice)], ['To pay suppliers', eur(M.toPay)]] })}
+      <div class="viewpills" role="tablist">${pills.map(([t, n, f]) => `<button class="vpill" data-filter="${esc(f)}" aria-selected="${f === pick}">${t} <span>${n}</span></button>`).join('')}</div>
+      ${table([{ h: 'Record', v: r => recLink(r.id) }, { h: 'Customer or supplier', v: r => esc(r.who) }, { h: 'For', v: r => r.what }, { h: 'Status', v: r => r.st }, { h: 'Due', v: r => r.due }, { h: 'Amount incl. VAT', num: 1, v: r => `<span class="${r.amt < 0 ? 'uf-loss' : ''}">${eur(r.amt)}</span>` }],
+        rows.map(r => pick && !r._cat.split('|').includes(pick) ? { ...r, _hide: 1 } : r))}
+      <p class="muted">Amounts going out to suppliers are shown with a minus sign. Still to invoice is the order value including VAT minus what has been invoiced.</p>`;
   },
   invoice(id) {
     const i = F_(id); if (!i) return notFound('Invoice', id);
@@ -463,7 +487,7 @@ const P = {
     const rows = i.kind === 'Deposit' ? [[`Aanbetaling ${i.pct} % op order ${o.id}, ${q.project_info.subject}`, amt]]
       : q.chapters.map(c => [c.title, c.lines.reduce((s, l) => s + lineTotal(l), 0)]).concat(deps.map(x => [`Af: aanbetaling ${x.id}`, -invAmount(x)]));
     const acts = btn('Download PDF', 'secondary', 'data-print') + (i.status === 'Draft' ? doBtn('Send invoice', 'sendinv', i.id, 'primary')
-      : i.status === 'Sent' ? (st[0] === 'loss' ? doBtn(`Send reminder ${i.reminders + 1}`, 'reminder', i.id) : '') + doBtn('Register payment', 'pay', i.id, 'primary') : '');
+      : i.status === 'Sent' ? (st[0] === 'loss' ? doBtn(`Send reminder ${i.reminders + 1}`, 'reminder', i.id, reminderDue(i) ? 'secondary' : 'quiet') : '') + doBtn('Register payment', 'pay', i.id, 'primary') : '');
     return `${head({ crumbs: [['#/invoices', 'Invoices'], ['', i.id]], title: `Invoice ${i.id}`, status: st,
       facts: [['Customer', esc(p.customer)], ['Order', recLink(o.id)], ['Total incl. VAT', eur(gross(i))], ['Due', fmt(i.due)], ['Exact', i.status === 'Draft' ? 'Not booked' : 'Booked']], actions: acts })}
       ${stepper(p, i.kind === 'Final' ? (i.status === 'Paid' ? 8 : 7) : 4)}
@@ -475,7 +499,7 @@ const P = {
         <div class="paper__total"><span><b>Te betalen</b> inclusief 21% BTW</span><b>${eurNL(gross(i))}</b></div>
         <p class="paper__foot">Subtotaal ${eurNL(amt)} · BTW 21 % ${eurNL(gross(i) - amt)} · Graag betalen voor ${fmtNL(i.due)} onder vermelding van ${i.id}</p>
         ${i.status === 'Paid' ? `<p class="paidstamp">BETAALD ${fmtNL(i.paid)}</p>` : ''}
-      </article></div><aside class="split__rail">${agentPanel(i.status === 'Paid' ? 'Paid' : 'Payment', `<p>${i.status === 'Paid' ? `Paid on ${fmt(i.paid)}. Booked in Exact.${i.kind === 'Final' ? ' This closes the project.' : ''}` : i.status === 'Draft' ? 'This invoice is ready. Send it and I book it in Exact.' : st[0] === 'loss' ? `It is ${st[1]}. ${i.reminders ? `I sent reminder ${i.reminders}.` : ''} Send the next reminder or register the payment when it comes in.` : `Sent on ${fmt(i.date)}. I watch the bank and tell you when it is paid.`}</p>`)}
+      </article></div><aside class="split__rail">${agentPanel(i.status === 'Paid' ? 'Paid' : 'Payment', `<p>${i.status === 'Paid' ? `Paid on ${fmt(i.paid)}. Booked in Exact.${i.kind === 'Final' ? ' This closes the project.' : ''}` : i.status === 'Draft' ? 'This invoice is ready. Send it and I book it in Exact.' : st[0] === 'loss' ? `It is ${st[1]}. ${i.reminders ? `Reminder ${i.reminders} was sent.` : ''} ${reminderDue(i) ? `Your rule is a reminder ${R().reminderAfter} days after the due date, so reminder ${i.reminders + 1} is due now.` : `The next reminder is due ${R().reminderAfter} days after the ${i.reminders ? 'last reminder' : 'due date'} (Agent rules).`} Register the payment when it comes in.` : `Sent on ${fmt(i.date)}. I watch the bank and tell you when it is paid.`}</p>`)}
         ${details([['Kind', i.kind === 'Deposit' ? `Deposit ${i.pct} %` : 'Final invoice'], ['Reminders sent', i.reminders], ['Project', recLink(p.id)]])}</aside></div>`;
   },
   purchasing() {
@@ -525,14 +549,26 @@ const P = {
       rows: S.articles.map(r => ({ ...r, _cat: !['m1', 'uur', 'post'].includes(r.unit) && r.stock < 5 ? 'Low stock' : '' })), detail: { actions: ['Edit price', 'Correct the stock count', 'Order more'] } });
   },
   activity() {
-    return listPage({ title: 'Agent activity', sub: 'Everything the agent and you did. Undo is on the message right after each action.', cats: ['By the agent', 'By you'],
+    return listPage({ title: 'Agent activity', sub: 'Everything the agent and you did. Undo is on the message right after each action. Select a row to correct the agent.', cats: ['By the agent', 'By you', 'Rule changes'],
+      primary: btn('Agent rules', 'secondary', 'data-go="#/rules"') + btn('Tell the agent', 'primary', 'data-tellagent'),
       cols: [{ h: 'What happened', v: r => esc(r[0]) }, { h: 'Who', v: r => r[2] === 'agent' ? 'Agent' : 'You' }, { h: 'When', v: r => esc(r[1]) }],
-      rows: S.activity.map(r => Object.assign([...r], { _cat: r[2] === 'agent' ? 'By the agent' : 'By you' })), detail: { actions: ['Tell the agent'] } });
+      rows: S.activity.map(r => Object.assign([...r], { _cat: (r[2] === 'agent' ? 'By the agent' : 'By you') + (/^Rule changed|^You told the agent/.test(r[0]) ? '|Rule changes' : '') })), detail: { actions: ['Tell the agent'] } });
   },
   rules() {
-    const r = [['Margin floor', `${MARGIN_FLOOR} %`, 'Below this the agent asks you before a quote goes out.'], ['Price tolerance on purchase invoices', '€ 25.00', 'Bigger differences go to you.'], ['First reminder', '3 days after due date', ''], ['Undo window for mails', '5 minutes', ''], ['Send quotes without a person', 'Never', 'Every quote is verified by a person.']];
-    return `${head({ title: 'Agent rules', actions: btn('Save rules', 'primary', 'data-save="Agent rules saved."') })}<p class="lead">You decide what the agent may do alone. Example values.</p>
-      <dl class="rules">${r.map(([k, v, h]) => `<div><dt>${k}${h ? `<span class="uf-second">${h}</span>` : ''}</dt><dd><input class="field" value="${v}" aria-label="${k}"></dd></div>`).join('')}</dl>`;
+    const v = R(), row = (key, label, unit, help, min, max) => `<div><dt><label for="r-${key}">${label}</label><span class="uf-second">${help}</span></dt><dd><input class="field field--num" type="number" id="r-${key}" data-rule="${key}" value="${v[key]}" min="${min}" max="${max}" step="1"> <span class="muted">${unit}</span></dd></div>`;
+    const changed = S.activity.filter(a => /^Rule changed|^You told the agent/.test(a[0])).slice(0, 5);
+    return `${head({ title: 'Agent rules', actions: btn('Tell the agent', 'secondary', 'data-tellagent') + btn('Reset to defaults', 'quiet', 'data-rulereset') + btn('Save rules', 'primary', 'data-saverules') })}
+      <p class="lead">You decide what the agent may do alone. The portal uses these values everywhere: on quotes, invoices, purchases and Today.</p>
+      <h2 class="uf-section-title">Quotes</h2>
+      <dl class="rules">${row('marginFloor', 'Margin floor', '%', 'Lines below this are flagged and the agent asks you before the quote goes out.', 0, 60)}${row('quoteValid', 'Quote valid for', 'days', 'Set on every new calculation.', 7, 120)}${row('followUpAfter', 'Follow up a quote after', 'days', 'After this many days without a reply, the quote appears on Today.', 3, 60)}</dl>
+      <h2 class="uf-section-title">Invoices</h2>
+      <dl class="rules">${row('paymentTerm', 'Payment term', 'days', 'Due date of every new invoice.', 7, 60)}${row('reminderAfter', 'Reminder after the due date', 'days', 'When an invoice is this late, the agent puts a reminder on Today. The next one follows a week later.', 0, 30)}${row('depositPct', 'Deposit at order', '%', 'Used when the customer pays a deposit.', 10, 90)}
+        <div><dt><label for="r-autoInvoice">Draft the final invoice when a delivery is signed</label><span class="uf-second">The agent makes the draft. You still check it and press Send.</span></dt><dd><select class="field" id="r-autoInvoice" data-rule="autoInvoice"><option value="1" ${v.autoInvoice ? 'selected' : ''}>Yes</option><option value="0" ${v.autoInvoice ? '' : 'selected'}>No, I make it myself</option></select></dd></div></dl>
+      <h2 class="uf-section-title">Purchasing</h2>
+      <dl class="rules">${row('tolerance', 'Price tolerance on purchase invoices', '€', 'Differences up to this amount are accepted. Bigger differences go to you.', 0, 500)}</dl>
+      <h2 class="uf-section-title">Fixed</h2>
+      <dl class="rules"><div><dt>Send quotes without a person<span class="uf-second">Every quote is verified and sent by a person. This cannot be changed.</span></dt><dd>Never</dd></div><div><dt>Set prices<span class="uf-second">The agent never invents a price. Lines that are not in the catalogue wait for you.</span></dt><dd>Never</dd></div></dl>
+      ${changed.length ? `<h2 class="uf-section-title">Recent changes</h2><ul class="tl">${changed.map(([t, d]) => `<li><span>${esc(t)}</span><time>${esc(d)}</time></li>`).join('')}</ul>` : ''}`;
   },
   settings() {
     const conn = [['Exact Online', ['profit', 'Connected']], ['Gmail', window.UFMail && window.UFMail.connected ? ['profit', 'Connected'] : ['neutral', 'Example mode']], ['Outlook', ['neutral', 'Not connected']], ['WhatsApp Business', ['neutral', 'Example conversations']]];
@@ -563,7 +599,7 @@ const P = {
       ['Article', S.articles, () => '#/articles', r => r.code, r => r.name, r => `${r.stock} in stock`]];
     const stop = new Set(['open', 'for', 'the', 'a', 'an', 'of', 'and', 'all', 'show', 'me', 'my', 'with', 'which', 'what', 'are', 'is', 'from', 'to', 'in', 'quotes', 'quote', 'orders', 'order', 'projects', 'project', 'invoices', 'invoice', 'purchase', 'purchases']);
     let hits = [];
-    if (/14 days|longer|no reply/i.test(qs)) hits = Object.values(S.quotes).filter(q => q.status === 'Sent' && daysFrom(q.sent, TODAY) >= 14).map(r => ({ k: 'Quote', _href: `#/quote/${r.id}`, id: r.id, what: r.client.company, st: quoteState(r)[1] }));
+    if (/14 days|longer|no reply/i.test(qs)) hits = Object.values(S.quotes).filter(q => q.status === 'Sent' && daysFrom(q.sent, TODAY) >= R().followUpAfter).map(r => ({ k: 'Quote', _href: `#/quote/${r.id}`, id: r.id, what: r.client.company, st: quoteState(r)[1] }));
     else {
       const kind = (/quote/i.test(qs) && 'Quote') || (/invoice/i.test(qs) && 'Invoice') || (/purchase/i.test(qs) && 'Purchase order') || (/order/i.test(qs) && 'Order') || (/project/i.test(qs) && 'Project') || null;
       const words = qs.toLowerCase().split(/[^a-z0-9-]+/).filter(w => w && !stop.has(w));
@@ -579,6 +615,57 @@ function notFound(kind, id) { return `${head({ title: `${kind} not found` })}<p 
 
 /* ---------- actions: each one changes the store, logs it, and offers Undo ---------- */
 const logA = (t, who = 'you') => S.activity.unshift([t, now(), who]);
+
+/* Agent rules: change, log, and say what the change does to the records that are open now. */
+const RULE_TXT = { marginFloor: ['Margin floor', v => `${v} %`], quoteValid: ['Quote valid for', v => `${v} days`], followUpAfter: ['Follow up a quote after', v => `${v} days`], paymentTerm: ['Payment term', v => `${v} days`],
+  reminderAfter: ['Reminder after the due date', v => `${v} days`], depositPct: ['Deposit at order', v => `${v} %`], tolerance: ['Price tolerance', v => eur(v)], autoInvoice: ['Draft the final invoice on delivery', v => v ? 'yes' : 'no'] };
+const RULE_RANGE = { marginFloor: [0, 60], quoteValid: [7, 120], followUpAfter: [3, 60], paymentTerm: [7, 60], reminderAfter: [0, 30], depositPct: [10, 90], tolerance: [0, 500] };
+function ruleImpact(k, v) {
+  const openQ = Object.values(S.quotes).filter(editable);
+  if (k === 'marginFloor') { const n = openQ.reduce((a, q) => a + q.chapters.flatMap(c => c.lines).filter(l => l.cost && l.margin < v).length, 0); return n ? `${n} line${n > 1 ? 's' : ''} on open quotes ${n > 1 ? 'are' : 'is'} now below the floor and flagged` : 'No line on an open quote is below the new floor'; }
+  if (k === 'followUpAfter') { const n = Object.values(S.quotes).filter(q => q.status === 'Sent' && daysFrom(q.sent, TODAY) >= v).length; return n ? `${n} quote${n > 1 ? 's' : ''} now need${n > 1 ? '' : 's'} a follow-up on Today` : 'No quote needs a follow-up yet'; }
+  if (k === 'reminderAfter') { const n = S.invoices.filter(reminderDue).length; return n ? `${n} invoice${n > 1 ? 's' : ''} now need${n > 1 ? '' : 's'} a reminder on Today` : 'No invoice needs a reminder yet'; }
+  if (k === 'paymentTerm') return `New invoices are due after ${v} days. Invoices already sent keep their due date`;
+  if (k === 'quoteValid') return `New calculations are valid for ${v} days`;
+  if (k === 'depositPct') return `New orders with a deposit ask ${v} % at order`;
+  if (k === 'tolerance') return `Purchase invoices are accepted up to ${eur(v)} difference`;
+  if (k === 'autoInvoice') return v ? 'The agent drafts the final invoice when a delivery is signed' : 'You make the final invoice yourself after delivery';
+  return '';
+}
+function setRules(next, how, said) {
+  const old = R(), ch = [];
+  Object.keys(next).forEach(k => { let v = next[k]; if (k !== 'autoInvoice') { if (!isFinite(v)) return; const [lo, hi] = RULE_RANGE[k]; v = Math.min(hi, Math.max(lo, v)); next[k] = v; } if (v !== old[k]) ch.push(k); });
+  if (!ch.length) { if (said) run(() => { logA(`You told the agent: ${said}`); return ['Noted. Your rules already say this, so nothing changed.']; }); else toast('Nothing changed.'); return; }
+  run(() => { S.rules = { ...old }; ch.forEach(k => { S.rules[k] = next[k]; });
+    if (said) logA(`You told the agent: ${said}`);
+    ch.forEach(k => logA(`Rule changed: ${RULE_TXT[k][0]} ${RULE_TXT[k][1](old[k])} → ${RULE_TXT[k][1](S.rules[k])}`));
+    return [`${how}: ${ch.map(k => `${RULE_TXT[k][0].toLowerCase()} is now ${RULE_TXT[k][1](S.rules[k])}`).join(', ')}. ${ch.map(k => ruleImpact(k, S.rules[k])).join('. ')}.`]; });
+}
+/* Reads an instruction in English or Dutch and turns it into rule changes. Anything it cannot map is logged and left to you. */
+function parseRules(text, context = '') {
+  const out = {}, clauses = text.toLowerCase().split(/[.;\n]|\band\b|\ben\b/);
+  clauses.forEach(c => { const m = c.match(/(\d+(?:[.,]\d+)?)/), v = m ? num(m[1]) : null;
+    if (/factu|invoice/.test(c) && /(deliver|lever|sign|getekend|after the|na de)/.test(c) && !v) { out.autoInvoice = !/(don'?t|do not|stop|never|niet|geen|no longer|myself|zelf)/.test(c); return; }
+    if (v == null) return;
+    if (/marge|margin/.test(c)) out.marginFloor = v;
+    else if (/toleran|verschil|difference/.test(c)) out.tolerance = v;
+    else if (/remind|herinner|aanman/.test(c)) out.reminderAfter = v;
+    else if (/follow|opvolg|nabel|no reply|geen reactie/.test(c)) out.followUpAfter = v;
+    else if (/deposit|aanbetal/.test(c)) out.depositPct = v;
+    else if (/valid|geldig/.test(c)) out.quoteValid = v;
+    else if (/payment term|pay within|betaaltermijn|betalen binnen|due|vervaldatum/.test(c)) out.paymentTerm = v; });
+  if (!Object.keys(out).length && /^(don'?t|do not|stop|never|niet|no longer)/i.test(text.trim()) && /final invoice/i.test(context)) out.autoInvoice = false;
+  return out;
+}
+function tellAgent(context) {
+  openDrawer('Tell the agent', `${context ? `<p class="muted">About: ${esc(context)}</p>` : ''}<label class="fl">What should the agent do differently?<textarea class="field" rows="4" id="tta" placeholder="For example: send a reminder 7 days after the due date. Or: keep the margin at least 22 %."></textarea></label>
+    <p class="hint">The agent changes its rules from what you write and shows you what changed. You can always undo, or change them in Agent rules.</p>`,
+    '<button class="uf-pbtn uf-pbtn--primary" type="submit">Send to agent</button>', f => {
+      const said = $('#tta', f).value.trim(); if (!said) { toast('Write what the agent should do differently.'); return false; }
+      const next = parseRules(said, context);
+      if (Object.keys(next).length) { setRules(next, 'Rules updated', said); return; }
+      run(() => { logA(`You told the agent: ${said}${context ? ` (about: ${context})` : ''}`); return ['Noted in the activity. This does not match one of the agent rules, so nothing changes automatically. The rules are on Agent rules.']; }); });
+}
 function nextNum() {
   const ids = [...S.projects.map(x => x.id), ...Object.keys(S.quotes), ...S.orders.map(x => x.id), ...S.deliveries.map(x => x.id), ...S.invoices.map(x => x.id), ...S.purchases.map(x => x.id)];
   const n = Math.max(12, ...ids.map(i => /^[A-Z]2611-(\d{3})$/.test(i) ? +i.slice(-3) : 0)) + 1;
@@ -687,7 +774,7 @@ const DO = {
     mailModal({ title: 'Ask the customer', to: p.email, subject: `Uw aanvraag: ${p.name}`, body: `${greet(p)}\n\nDank voor uw aanvraag. Om een goede prijs te maken hebben we nog ${ask.length === 1 ? 'één gegeven' : 'een paar gegevens'} nodig:\n\n${ask.map((k, i) => `${i + 1}. ${ASKQ[k]}`).join('\n')}\n\nWeet u iets nog niet? Laat het ons weten. Dan rekenen we met een standaardwaarde en vermelden dat in de offerte.${sig}` }, () => {
       p.request.asked = TODAY; logA(`Asked ${p.customer} for ${ask.length} missing detail${ask.length > 1 ? 's' : ''}`); return [`Questions sent to ${p.customer}. The request now waits for the customer.`]; }); },
   calc(pid) { run(() => { const p = P_(pid), n = nextNum(), id = `O2611-${n}`, calc = `C2611-${n}`;
-    S.quotes[id] = { id, calc, rev: 'R1', project: pid, date: TODAY, valid: addDays(TODAY, 30), status: 'Calculating', intro: D0.quotes['O2611-010'].intro, files: [], timeline: [['Agent drafted the calculation from the request', now()]],
+    S.quotes[id] = { id, calc, rev: 'R1', project: pid, date: TODAY, valid: addDays(TODAY, R().quoteValid), status: 'Calculating', intro: D0.quotes['O2611-010'].intro, files: [], timeline: [['Agent drafted the calculation from the request', now()]],
       client: { company: p.customer, attn: p.contact, address: p.site, email: p.email, salutation: 'Geachte heer, mevrouw,' }, project_info: { nr: p.id, desc: p.name, delivery: p.site, subject: 'Levering systeemwanden, kozijnen en deuren' }, chapters: draftLines(p) };
     p.quote = id; logA(`Drafted calculation ${calc} for ${p.customer} from the request`, 'agent');
     const open = checks(S.quotes[id]).filter(c => c.kind === 'loss').length;
@@ -712,11 +799,11 @@ const DO = {
     modal(`${q.client.company} accepted ${q.id}?`, `<p>This makes the order. You can change the delivery week later in Planning.</p>
       <label class="fl">Customer reference<input class="field" id="ref" placeholder="Their PO number, if any"></label>
       <label class="fl">Delivery week<select class="field" id="wk">${[49, 50, 51, 52].map(w => `<option ${w === 51 ? 'selected' : ''}>${w}</option>`).join('')}</select></label>
-      <label class="fl">Payment<select class="field" id="pay"><option>14 days after delivery</option><option>30 % at order, 70 % on delivery</option><option>30 days after delivery</option></select></label>`, 'Make order', m => run(() => {
-      const id = `V2611-${nextNum()}`, pay = $('#pay', m).value;
-      S.orders.push({ id, project: p.id, quote: q.id, created: TODAY, week: +$('#wk', m).value, ref: $('#ref', m).value.trim() || '–', payment: pay });
+      <label class="fl">Payment<select class="field" id="pay"><option>${R().paymentTerm} days after delivery</option><option value="deposit">${R().depositPct} % at order, ${100 - R().depositPct} % on delivery</option><option>30 days after delivery</option></select></label>`, 'Make order', m => run(() => {
+      const id = `V2611-${nextNum()}`, pay = $('#pay', m).value, payTxt = $('#pay', m).selectedOptions[0].textContent;
+      S.orders.push({ id, project: p.id, quote: q.id, created: TODAY, week: +$('#wk', m).value, ref: $('#ref', m).value.trim() || '–', payment: payTxt });
       p.order = id; q.status = 'Accepted'; q.accepted = TODAY; q.timeline.unshift([`${q.client.company} accepted; order ${id} made`, now()]); logA(`Made order ${id} from quote ${q.id}`);
-      if (pay.startsWith('30 %')) S.invoices.push({ id: `F2611-${nextNum()}`, order: id, kind: 'Deposit', pct: 30, date: TODAY, due: addDays(TODAY, 14), status: 'Draft', reminders: 0 });
+      if (pay === 'deposit') S.invoices.push({ id: `F2611-${nextNum()}`, order: id, kind: 'Deposit', pct: R().depositPct, date: TODAY, due: addDays(TODAY, R().paymentTerm), status: 'Draft', reminders: 0 });
       return [`Order ${id} made. Next: order the materials.`, `#/order/${id}`]; })); },
   rejectq(qid) { const q = Qt(qid); modal(`${q.client.company} said no?`, `<label class="fl">Why<input class="field" id="why" placeholder="For example: price"></label>`, 'Mark as rejected', m => run(() => {
     q.status = 'Rejected'; q.rejected = $('#why', m).value.trim() || 'No reason given'; q.timeline.unshift([`Customer rejected: ${q.rejected}`, now()]); logA(`${q.id} rejected by ${q.client.company}`); return [`${q.id} marked as rejected.`]; })); },
@@ -742,13 +829,15 @@ const DO = {
   delivered(did) { const d = L_(did), o = O_(d.order), p = P_(o.project);
     modal(`Confirm delivery ${d.id}`, `<label class="fl">Signed for by<input class="field" id="sb" value="${esc(p.contact)}"></label><label class="fl">Delivered on<input class="field" type="date" id="dd" value="${TODAY}"></label>`, 'Confirm delivery', m => run(() => {
       d.delivered = $('#dd', m).value || TODAY; d.signedBy = $('#sb', m).value.trim() || p.contact; logA(`${d.id} delivered, signed by ${d.signedBy}`);
+      if (R().autoInvoice && !finalOf(o.id)) { const id = `F2611-${nextNum()}`; S.invoices.push({ id, order: o.id, kind: 'Final', date: TODAY, due: addDays(TODAY, R().paymentTerm), status: 'Draft', reminders: 0 }); logA(`Drafted final invoice ${id} for ${o.id} after the delivery was signed`, 'agent');
+        return [`Delivered and signed by ${d.signedBy}. The agent drafted invoice ${id}. Check it and send it.`, `#/invoice/${id}`]; }
       return [`Delivered and signed by ${d.signedBy}. Next: make the invoice.`]; })); },
-  makeinv(oid) { run(() => { const id = `F2611-${nextNum()}`; S.invoices.push({ id, order: oid, kind: 'Final', date: TODAY, due: addDays(TODAY, 14), status: 'Draft', reminders: 0 }); logA(`Drafted final invoice ${id} for ${oid}`, 'agent');
+  makeinv(oid) { run(() => { const id = `F2611-${nextNum()}`; S.invoices.push({ id, order: oid, kind: 'Final', date: TODAY, due: addDays(TODAY, R().paymentTerm), status: 'Draft', reminders: 0 }); logA(`Drafted final invoice ${id} for ${oid}`, 'agent');
     return [`Invoice ${id} drafted. Check it and send it.`, `#/invoice/${id}`]; }); },
   sendinv(fid) { const i = F_(fid), o = O_(i.order), p = P_(o.project);
     mailModal({ title: `Send invoice ${i.id}`, to: p.email, subject: `Factuur ${i.id} · ${p.name}`, attach: `Factuur ${i.id}.pdf`,
-      body: `${greet(p)}\n\nIn de bijlage factuur ${i.id} voor order ${o.id}, ${eurNL(gross(i))} inclusief BTW. Graag betalen voor ${fmtNL(addDays(TODAY, 14))}.${sig}` }, () => {
-      i.status = 'Sent'; i.date = TODAY; i.due = addDays(TODAY, 14); logA(`Sent invoice ${i.id} to ${p.customer} and booked it in Exact`); return [`Invoice ${i.id} sent and booked in Exact.`]; }); },
+      body: `${greet(p)}\n\nIn de bijlage factuur ${i.id} voor order ${o.id}, ${eurNL(gross(i))} inclusief BTW. Graag betalen voor ${fmtNL(addDays(TODAY, R().paymentTerm))}.${sig}` }, () => {
+      i.status = 'Sent'; i.date = TODAY; i.due = addDays(TODAY, R().paymentTerm); logA(`Sent invoice ${i.id} to ${p.customer} and booked it in Exact`); return [`Invoice ${i.id} sent and booked in Exact.`]; }); },
   reminder(fid) { const i = F_(fid), o = O_(i.order), p = P_(o.project);
     mailModal({ title: `Send reminder ${i.reminders + 1}`, to: p.email, subject: `Herinnering factuur ${i.id}`, attach: `Factuur ${i.id}.pdf`,
       body: `${greet(p)}\n\nFactuur ${i.id} van ${eurNL(gross(i))} stond open tot ${fmtNL(i.due)}. Wilt u deze binnen 7 dagen betalen? Is er iets mis met de factuur, laat het ons weten.${sig}` }, () => {
@@ -770,9 +859,9 @@ const DO = {
   preceive(id) { const x = I_(id); modal(`Goods received for ${x.id}`, `<p>Tick what arrived in good order.</p><div class="picklines">${x.lines.map(l => `<label><input type="checkbox" class="rc" checked> ${l.qty} ${l.unit} ${esc(l.desc)}</label>`).join('')}</div>`, 'Goods received', m => {
     if ([...m.querySelectorAll('.rc')].some(c => !c.checked)) { toast('Not everything arrived. Chase the supplier for the rest, or tick all lines when it is in.'); return false; }
     run(() => { x.step = 3; x.log.push(['Goods received and checked', now()]); logA(`Received goods for ${x.id}`); return ['Goods received. Next: match the purchase invoice.']; }); }); },
-  pmatch(id) { const x = I_(id); modal(`Purchase invoice from ${x.supplier}`, `<label class="fl">Invoice amount excl. VAT<input class="field" id="pa" value="${purTotal(x).toFixed(2)}"></label><p class="hint">Differences up to € 25.00 are accepted (Agent rules).</p>`, 'Match invoice', m => {
+  pmatch(id) { const x = I_(id); modal(`Purchase invoice from ${x.supplier}`, `<label class="fl">Invoice amount excl. VAT<input class="field" id="pa" value="${purTotal(x).toFixed(2)}"></label><p class="hint">Differences up to ${eur(R().tolerance)} are accepted (Agent rules).</p>`, 'Match invoice', m => {
     const a = num($('#pa', m).value), diff = Math.round((a - purTotal(x)) * 100) / 100;
-    if (Math.abs(diff) > 25) { toast(`Difference ${eur(diff)} is above your € 25.00 tolerance. Ask ${x.supplier} for a credit note.`); return false; }
+    if (Math.abs(diff) > R().tolerance) { toast(`Difference ${eur(diff)} is above your ${eur(R().tolerance)} tolerance. Ask ${x.supplier} for a credit note.`); return false; }
     run(() => { x.step = 4; x.log.push([`Purchase invoice matched${diff ? `, difference ${eur(diff)}` : ''}`, now()]); logA(`Matched purchase invoice for ${x.id}`, 'agent'); return ['Invoice matched. Pay it on the due date.']; }); }); },
   ppay(id) { run(() => { const x = I_(id); x.step = 5; x.log.push(['Paid and booked in Exact', now()]); logA(`Paid ${x.supplier} for ${x.id}`); return [`${x.id} paid. This purchase is complete.`]; }); },
   pchase(id) { const x = I_(id);
@@ -1071,6 +1160,9 @@ document.addEventListener('click', e => {
   if (t.matches('[data-gmail]')) { window.UFMail.connect(); return; }
   if (t.matches('[data-exact]')) { toast(`${S.invoices.filter(i => i.status !== 'Draft').length} invoices are booked in Exact Online. Nothing new to export.`); return; }
   if (t.matches('[data-save]')) { toast(t.dataset.save); return; }
+  if (t.matches('[data-saverules]')) { const next = {}; document.querySelectorAll('[data-rule]').forEach(el => { next[el.dataset.rule] = el.dataset.rule === 'autoInvoice' ? el.value === '1' : Math.round(num(el.value)); }); setRules(next, 'Agent rules'); return; }
+  if (t.matches('[data-rulereset]')) { setRules({ ...RULE0 }, 'Reset to defaults'); return; }
+  if (t.closest('[data-tellagent]')) { tellAgent(''); return; }
   if (t.matches('[data-replan]')) { toast('The agent checked supplier dates and capacity. The plan already fits; nothing to move.'); return; }
   if (t.matches('[data-approveplan]')) { logA('Approved the planning'); save(); toast('Plan approved. The montage team and customers get the dates.'); return; }
   if (t.matches('[data-resetall]')) { closeLayers(); modal('Reset example data?', '<p>All your changes, sent example mails and drafts go back to the example. This cannot be undone.</p>', 'Reset', () => { ['uf-store-v4', 'uf-store-v3', 'uf-mail-local', 'uf-mail-flags', 'uf-quote-O2611-010-v1'].forEach(k => { try { localStorage.removeItem(k); } catch (x) {} }); location.hash = '#/today'; location.reload(); }); return; }
@@ -1110,7 +1202,7 @@ function act(label) {
     'Correct the stock count': () => openDrawer(`Stock of ${r.code}`, `<div class="uf-field"><label for="sc">Counted</label><input class="field" id="sc" value="${r.stock}" inputmode="numeric"></div>`, null, f => run(() => {
       const x = S.articles.find(y => y.code === r.code); x.stock = Math.round(num($('#sc', f).value)); logA(`Corrected stock of ${x.code} to ${x.stock}`); return [`Stock of ${x.code} is now ${x.stock}.`]; })),
     'Order more': () => { closeLayers(); NEW.purchase(r.code); },
-    'Tell the agent': () => openDrawer('Tell the agent', '<label class="fl">What should change?<textarea class="field" rows="4" id="tta"></textarea></label>', '<button class="uf-pbtn uf-pbtn--primary" type="submit">Send to agent</button>', f => run(() => { logA(`You told the agent: ${$('#tta', f).value || '…'}`); return ['The agent noted it and will follow it from now on.']; })),
+    'Tell the agent': () => tellAgent(Array.isArray(r) ? r[0] : ''),
     'Connect': () => toast('Example: this connection is not set up in the prototype. Gmail is the one that really connects.'),
     'Disconnect': () => toast('Example: this connection stays on in the prototype.'),
   };
