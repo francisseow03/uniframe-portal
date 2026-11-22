@@ -321,3 +321,10 @@ tr.flag td { background: var(--uf-platform-status-loss-bg); }
 /* The capsule above each step is part of that step's click area */
 .step-link::after { content: ""; position: absolute; left: 0; right: 0; top: -62px; height: 56px; z-index: 4; cursor: pointer; }
 .uf-table td:first-child a { white-space: nowrap; }
+
+/* Stepper fix (22 Nov 2026): future steps centred like reached ones; the green liquid follows the lens (the page you are on);
+   a pale band under it still shows how far the project has got. */
+.step-link { width: calc(100% - 8px); text-align: center; }
+.uf-steps--nav::after { width: max(28px, calc((var(--pos) - 0.5) * 100% / var(--n) - 4px)); }
+.uf-steps--nav::before { background: linear-gradient(90deg, rgb(47 93 80 / .22) 0 calc((var(--cur) - 0.5) * 100% / var(--n) + 18px), transparent 0), rgb(255 255 255 / .55); }
+.uf-steps--nav li.done::before, .uf-steps--nav li[aria-current="step"]::before { background: #fff; }

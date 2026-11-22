@@ -727,7 +727,7 @@ function route() {
   $('#view').innerHTML = fn(rest.join('/') || q);
   renderNav(sec);
   document.title = `${$('#view h1')?.textContent || 'Portal'} · Uniframe portal`;
-  const tr = $('.steps-track'); if (tr) requestAnimationFrame(() => requestAnimationFrame(() => tr.style.setProperty('--pos', tr.dataset.here)));
+  const tr = $('.steps-track'); if (tr) { void tr.getBoundingClientRect().width; getComputedStyle(tr).getPropertyValue('--pos'); tr.style.setProperty('--pos', tr.dataset.here); }
   $('#view').focus({ preventScroll: true });
   window.scrollTo(0, y);
 }
