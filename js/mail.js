@@ -15,7 +15,7 @@ const demo = [
     draft: 'Beste Paul,\n\nDank voor je bericht. Deur 2.14 is toegevoegd; je ontvangt de aangepaste offerte vandaag.\n\nMet vriendelijke groet,\nArjan Laninga' },
   { id: 'd2', folder: 'inbox', lane: ['active', 'New request'], from: 'Bouwbedrijf Hoekstra', email: 'inkoop@hoekstra-bouw.nl', subject: 'Aanvraag school wing B', date: '21 Nov', unread: true,
     body: 'Goedemiddag,\n\nVoor school wing B in Amersfoort zoeken wij een prijs voor circa 60 m1 glazen systeemwand en 12 deuren. Tekening volgt.\n\nGroet,\nAfdeling inkoop',
-    agent: 'I made project P2611-011 and drafted 2 questions: ceiling height and glass type. They go out after you approve, or you can edit them.', link: ['#/project/P2611-011', 'Open project P2611-011'],
+    agent: 'I made project P2611-011 and drafted 2 questions: ceiling height and glass type. They go out after you approve, or you can edit them.', link: ['#/request/P2611-011', 'Open the request'],
     draft: 'Goedemiddag,\n\nDank voor uw aanvraag. Twee vragen zodat we een goede prijs kunnen maken:\n1. Wat is de plafondhoogte?\n2. Enkel of dubbel glas?\n\nMet vriendelijke groet,\nArjan Laninga' },
   { id: 'd3', folder: 'inbox', lane: ['loss', 'Supplier late'], from: 'Glas Centrum Nederland', email: 'planning@glascentrum.nl', subject: 'Leverdatum I2611-006', date: '21 Nov',
     body: 'Beste klant,\n\nDoor drukte in de productie verschuift de levering van order I2611-006 naar 2 december.\n\nMet vriendelijke groet,\nPlanning',
@@ -24,6 +24,9 @@ const demo = [
     body: 'Hoi Arjan,\n\nBij de oplevering zagen we een flinke kras op het deurblad van kamer 3. Foto in de bijlage. Hoe lossen we dit op?\n\nGroet,\nMarloes',
     agent: 'This is a complaint about a delivered order, so I stopped and handed it to you. I drafted a reply you can change.', link: ['#/order/V2611-003', 'Open order V2611-003'],
     draft: 'Hoi Marloes,\n\nVervelend, dank voor de foto. We komen volgende week een nieuw deurblad plaatsen; ik bel je morgen voor een moment.\n\nGroet,\nArjan' },
+  { id: 'd6', folder: 'inbox', lane: ['active', 'New request'], from: 'Paul Terlouw', email: 'paul.terlouw@wallsz.nl', subject: 'Aanvraag Politie KPLD', date: '18 Nov',
+    body: 'Beste Arjan,\n\nGraag een offerte voor systeemwanden, 8 kozijnen en deuren voor het politiebureau in Driebergen. Tekening en deurstaat in de bijlage.\n\nMet vriendelijke groet,\nPaul Terlouw\nWallsz',
+    agent: 'I made project P2611-009 from this mail, read the drawing and the door schedule, and drafted calculation C2611-010.', link: ['#/request/P2611-009', 'Open the request'] },
   { id: 'd5', folder: 'sent', from: 'You', to: 'paul.terlouw@wallsz.nl', email: 'paul.terlouw@wallsz.nl', subject: 'Offerte O2611-010', date: '12 Nov', body: 'Beste Paul,\n\nIn de bijlage onze offerte voor Politie KPLD.\n\nMet vriendelijke groet,\nArjan' },
 ];
 
@@ -35,7 +38,7 @@ const M = {
   local: LS.get('uf-mail-local', []),
   get clientId() { return LS.get('uf-gmail-client', '') || window.UF_GMAIL_CLIENT_ID || ''; },
   list() {
-    const all = (M.live || demo).concat(M.local);
+    const all = M.local.concat(M.live || demo);
     let l = M.folder === 'starred' ? all.filter(m => m.star) : M.folder === 'lane' ? all.filter(m => m.lane && m.lane[1] === M.lane) : all.filter(m => m.folder === M.folder);
     if (M.q) { const q = M.q.toLowerCase(); l = l.filter(m => (m.from + m.subject + m.body).toLowerCase().includes(q)); }
     return l;
@@ -44,7 +47,9 @@ const M = {
 
 function counts() { const all = (M.live || demo).concat(M.local); return { inbox: all.filter(m => m.folder === 'inbox' && m.unread).length, drafts: all.filter(m => m.folder === 'drafts').length }; }
 
-function render() {
+function render(id) {
+  if (id && id !== M.routed) { const m = find(id); if (m) { M.folder = m.folder; M.lane = null; M.q = ''; M.open = id; if (m.unread) { m.unread = false; keepFlags(m); setTimeout(() => window.UF && window.UF.nav(), 0); } } }
+  M.routed = id;
   const c = counts(), lanes = [...new Set(demo.filter(m => m.lane).map(m => m.lane[1]))];
   const list = M.list(), open = list.find(m => m.id === M.open) || null;
   const f = (k, label, ico, n) => `<button class="mf" data-m="folder" data-v="${k}" aria-current="${M.folder === k && !M.lane ? 'true' : 'false'}">${I(ico)}<span>${label}</span>${n ? `<b>${n}</b>` : ''}</button>`;
@@ -71,10 +76,11 @@ function render() {
 function reader(m) {
   return `<div class="mread__head"><h2>${esc(m.subject || '(no subject)')}</h2>
       <button class="uf-pbtn uf-pbtn--quiet uf-pbtn--sm" data-m="star" data-v="${m.id}" aria-pressed="${!!m.star}">${m.star ? 'Starred' : 'Star'}</button></div>
-    <div class="mread__meta"><b>${esc(m.from)}</b> <span class="muted">&lt;${esc(m.email || '')}&gt;</span><span class="muted">${esc(m.date)}</span></div>
+    <div class="mread__meta">${m.folder === 'sent' || m.folder === 'drafts' ? `<b>To: ${esc(m.to || m.email || '')}</b>` : `<b>${esc(m.from)}</b> <span class="muted">&lt;${esc(m.email || '')}&gt;</span>`}<span class="muted">${esc(m.date)}</span></div>
     ${m.agent ? `<section class="agent agent--mail"><div class="agent__head">${I('agent')}<h2>What the agent did</h2></div><div class="agent__body"><p>${esc(m.agent)}</p></div>
       <div class="agent__actions">${m.link ? `<a class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" href="${m.link[0]}">${esc(m.link[1])}</a>` : ''}${m.draft ? `<button class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" data-m="usedraft" data-v="${m.id}">Use the agent's reply</button>` : ''}</div></section>` : ''}
-    <div class="mread__body">${esc(m.body || m.snippet || '').replace(/\n/g, '<br>')}</div>
+    ${m.folder === 'sent' && m.mock ? '<p class="sentnote">Sent in example mode: saved here, not delivered. Connect Gmail in Settings to send for real.</p>' : ''}
+    <div class="mread__body">${esc(m.body || m.snippet || '').replace(/\n/g, '<br>')}</div>${m.attach ? `<p class="attach">${I('upload')}${esc(m.attach)}</p>` : ''}
     <div class="mread__actions"><button class="uf-pbtn uf-pbtn--secondary" data-m="reply" data-v="${m.id}">Reply</button><button class="uf-pbtn uf-pbtn--secondary" data-m="replyall" data-v="${m.id}">Reply all</button><button class="uf-pbtn uf-pbtn--quiet" data-m="forward" data-v="${m.id}">Forward</button></div>`;
 }
 function composer() {
@@ -86,8 +92,8 @@ function composer() {
     <label class="compose__f"><span>Bcc</span><input name="bcc" value="${esc(c.bcc || '')}"></label>
     <label class="compose__f"><span>Subject</span><input name="subject" value="${esc(c.subject || '')}"></label>
     <textarea name="body" rows="9" aria-label="Message">${esc(c.body || '')}</textarea>
-    <p class="compose__hint">${M.live ? 'Sends from your connected Gmail account.' : 'Gmail is not connected: Send opens Gmail in a new tab with this mail filled in, and you press Send there.'}</p>
-    <div class="compose__foot"><button class="uf-pbtn uf-pbtn--primary" type="submit">${I('send')}Send</button><button class="uf-pbtn uf-pbtn--quiet" type="button" data-m="savedraft">Save draft</button></div>
+    <p class="compose__hint">${M.live ? 'Sends from your connected Gmail account.' : 'Example mode: Send saves the mail in Sent; it is not delivered. Open in Gmail sends it for real from your own Gmail.'}</p>
+    <div class="compose__foot"><button class="uf-pbtn uf-pbtn--primary" type="submit">${I('send')}Send</button><button class="uf-pbtn uf-pbtn--quiet" type="button" data-m="savedraft">Save draft</button>${M.live ? '' : '<button class="uf-pbtn uf-pbtn--quiet" type="button" data-m="gmail">Open in Gmail</button>'}</div>
   </form>`;
 }
 
@@ -131,8 +137,8 @@ function rfc822({ to, cc, bcc, subject, body, inReplyTo }) {
 }
 
 /* ---------- events ---------- */
-function rerender() { if (!location.hash.startsWith('#/inbox')) return; document.getElementById('view').innerHTML = render(); }
-function startCompose(c) { M.compose = c; rerender(); setTimeout(() => document.querySelector('.compose [name=' + (c.to ? 'body' : 'to') + ']')?.focus(), 0); }
+function rerender() { if (!location.hash.startsWith('#/inbox')) return; document.getElementById('view').innerHTML = render(M.routed); window.UF && window.UF.nav(); }
+function startCompose(c) { M.compose = c; if (!location.hash.startsWith('#/inbox')) { location.hash = '#/inbox'; setTimeout(() => startCompose(c), 30); return; } rerender(); setTimeout(() => document.querySelector('.compose [name=' + (c.to ? 'body' : 'to') + ']')?.focus(), 0); }
 function dropDraft() { const id = M.compose && M.compose.draftId; if (id) { M.local = M.local.filter(x => x.id !== id); LS.set('uf-mail-local', M.local); } }
 const find = id => (M.live || demo).concat(M.local).find(m => m.id === id);
 const quote = m => `\n\n\nOn ${m.date}, ${m.from} wrote:\n> ` + (m.body || '').replace(/\n/g, '\n> ');
@@ -140,9 +146,9 @@ const quote = m => `\n\n\nOn ${m.date}, ${m.from} wrote:\n> ` + (m.body || '').r
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-m]'); if (!t || t.tagName === 'FORM') return;
   const a = t.dataset.m, v = t.dataset.v, m = v && find(v);
-  if (a === 'folder') { M.folder = v; M.lane = null; M.open = null; if (M.live && (v === 'inbox' || v === 'sent')) refresh(); rerender(); }
-  else if (a === 'lane') { M.folder = 'lane'; M.lane = v; M.open = null; rerender(); }
-  else if (a === 'open') { if (m && m.folder === 'drafts') { startCompose({ ...m, title: 'Draft', draftId: m.id }); return; } M.open = v; if (m) { m.unread = false; keepFlags(m); } rerender(); window.UF.nav && window.UF.nav(); }
+  if (a === 'folder') { M.folder = v; M.lane = null; M.open = null; M.routed = null; history.replaceState(null, '', '#/inbox'); if (M.live && (v === 'inbox' || v === 'sent')) refresh(); rerender(); }
+  else if (a === 'lane') { M.folder = 'lane'; M.lane = v; M.open = null; M.routed = null; history.replaceState(null, '', '#/inbox'); rerender(); }
+  else if (a === 'open') { if (m && m.folder === 'drafts') { startCompose({ ...m, title: 'Draft', draftId: m.id }); return; } M.open = v; M.routed = v; if (m) { m.unread = false; keepFlags(m); } history.replaceState(null, '', '#/inbox/' + v); rerender(); }
   else if (a === 'star') { m.star = !m.star; keepFlags(m); rerender(); }
   else if (a === 'compose') startCompose({});
   else if (a === 'reply' || a === 'replyall') startCompose({ title: 'Reply', to: m.email, cc: a === 'replyall' ? (m.to || '') : '', subject: /^re:/i.test(m.subject) ? m.subject : 'RE: ' + m.subject, body: quote(m), threadId: m.threadId, inReplyTo: m.msgId });
@@ -150,6 +156,8 @@ document.addEventListener('click', e => {
   else if (a === 'forward') startCompose({ title: 'Forward', subject: 'FW: ' + m.subject, body: '\n\n---------- Forwarded message ----------\nFrom: ' + m.from + ' <' + (m.email || '') + '>\nSubject: ' + m.subject + '\n\n' + (m.body || '') });
   else if (a === 'discard') { M.compose = null; rerender(); }
   else if (a === 'savedraft') { const d = Object.fromEntries(new FormData(t.closest('form'))); dropDraft(); M.local.unshift({ id: 'l' + Date.now(), folder: 'drafts', from: 'You', date: 'Now', ...d }); LS.set('uf-mail-local', M.local); M.compose = null; rerender(); window.UF.toast('Draft saved.'); }
+  else if (a === 'gmail') { const d = Object.fromEntries(new FormData(t.closest('form'))); const qs = [['to', 'to'], ['cc', 'cc'], ['bcc', 'bcc'], ['subject', 'su'], ['body', 'body']].filter(([k]) => d[k]).map(([k, p]) => p + '=' + encodeURIComponent(d[k])).join('&');
+    window.open('https://mail.google.com/mail/?view=cm&fs=1&' + qs, '_blank', 'noopener'); window.UF.toast('Gmail opened in a new tab with this mail. Press Send there.'); }
   else if (a === 'connect') connect();
   else if (a === 'disconnect') { if (M.token && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(M.token); M.token = null; M.live = null; rerender(); window.UF.toast('Gmail disconnected.'); }
   else if (a === 'refresh') refresh();
@@ -162,14 +170,16 @@ document.addEventListener('submit', async e => {
   if (M.token) {
     try { await api('messages/send', { method: 'POST', body: JSON.stringify({ raw: rfc822({ ...d, inReplyTo: c.inReplyTo }), ...(c.threadId ? { threadId: c.threadId } : {}) }) }); window.UF.toast(`Sent to ${d.to} from your Gmail.`); }
     catch (err) { window.UF.toast(err.message + '. Not sent.'); return; }
-  } else {
-    const qs = [['to', 'to'], ['cc', 'cc'], ['bcc', 'bcc'], ['subject', 'su'], ['body', 'body']].filter(([k]) => d[k]).map(([k, p]) => p + '=' + encodeURIComponent(d[k])).join('&');
-    window.open('https://mail.google.com/mail/?view=cm&fs=1&' + qs, '_blank', 'noopener');
-    window.UF.toast('Gmail opened in a new tab with your mail. Press Send there.');
-  }
-  dropDraft(); M.local.unshift({ id: 'l' + Date.now(), folder: 'sent', from: 'You', email: d.to, date: 'Now', ...d }); LS.set('uf-mail-local', M.local);
-  M.compose = null; rerender();
+  } else window.UF.toast(`Sent to ${d.to}. It is in Sent (example mode, not delivered).`);
+  dropDraft(); M.local.unshift({ id: 'l' + Date.now(), folder: 'sent', from: 'You', email: d.to, date: 'Today', mock: !M.token, ...d }); LS.set('uf-mail-local', M.local);
+  M.compose = null; M.folder = 'sent'; M.open = M.local[0].id; rerender();
 }, true);
 
-window.UFMail = { render, connect, get connected() { return !!M.live; }, get unread() { return counts().inbox; } };
+window.UFMail = { render, connect, get connected() { return !!M.token; }, get unread() { return counts().inbox; },
+  all: () => (M.live || demo).concat(M.local),
+  isUnread: id => { const m = demo.find(x => x.id === id); return !!(m && m.unread); },
+  compose: c => startCompose({ title: 'New message', ...c }),
+  send(d) { if (M.token) api('messages/send', { method: 'POST', body: JSON.stringify({ raw: rfc822(d) }) }).catch(e => window.UF.toast(e.message + '. Not sent.'));
+    M.local.unshift({ id: 'l' + Date.now() + Math.floor(Math.random() * 99), folder: 'sent', from: 'You', email: d.to, to: d.to, subject: d.subject, body: d.body, attach: d.attach, date: 'Today', mock: !M.token }); LS.set('uf-mail-local', M.local); },
+  dump: () => JSON.stringify(M.local), restore: s => { M.local = JSON.parse(s); LS.set('uf-mail-local', M.local); } };
 })();
