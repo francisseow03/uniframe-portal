@@ -10,7 +10,7 @@ const MARGIN_FLOOR = 18;
 
 /* ---------- navigation ---------- */
 const NAV = [
-  { items: [['today', 'Today', 'today'], ['inbox', 'Inbox', 'inbox', 4]] },
+  { items: [['today', 'Today', 'today'], ['inbox', 'Inbox', 'inbox', 'mail']] },
   { group: 'Sales', items: [['projects', 'Projects', 'projects'], ['calculations', 'Calculations', 'calc'], ['quotes', 'Quotes', 'quotes', 1]] },
   { group: 'Fulfilment', items: [['orders', 'Orders', 'orders'], ['purchasing', 'Purchasing', 'purchasing', 1], ['planning', 'Planning', 'planning']] },
   { group: 'Money', items: [['invoices', 'Invoices', 'invoices', 1]] },
@@ -20,7 +20,7 @@ const NAV = [
 const SECTION_OF = { project: 'projects', calculation: 'calculations', quote: 'quotes', order: 'orders', ask: 'today' };
 
 function renderNav(active) {
-  const link = ([r, label, ico, badge]) => `<a class="uf-nav" href="#/${r}" ${r === active ? 'aria-current="page"' : ''}>${I(ico)}<span>${label}</span>${badge ? `<b class="uf-nav__count" aria-label="${badge} need you">${badge}</b>` : ''}</a>`;
+  const link = ([r, label, ico, badge]) => { if (badge === 'mail') badge = window.UFMail ? window.UFMail.unread : 0; return `<a class="uf-nav" href="#/${r}" ${r === active ? 'aria-current="page"' : ''}>${I(ico)}<span>${label}</span>${badge ? `<b class="uf-nav__count" aria-label="${badge} need you">${badge}</b>` : ''}</a>`; };
   $('#nav').innerHTML = NAV.map(g => `<div class="uf-navgroup">${g.group ? `<div class="uf-sidebar__group">${g.group}</div>` : ''}${g.items.map(link).join('')}</div>`).join('')
     + `<div class="uf-navgroup uf-navgroup--end">${link(['settings', 'Settings', 'settings'])}</div>`;
 }
@@ -33,9 +33,31 @@ function head({ crumbs = [], title, status, facts = [], actions = '' }) {
     ${facts.length ? `<dl class="facts">${facts.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
   </header>`;
 }
-function stepper(cur, records) {
-  return `<div class="steps-wrap"><ol class="uf-steps" style="--n:8;--cur:${cur}" aria-label="Progress">${D.journey.map((s, i) =>
-    `<li class="${i + 1 < cur ? 'done' : ''}" ${i + 1 === cur ? 'aria-current="step"' : ''}>${s}${records ? `<span class="step-rec">${recLink(records[i])}</span>` : ''}</li>`).join('')}</ol></div>`;
+/* Journey stepper = breadcrumb. Green liquid = how far the project is. Glass lens = the record you are looking at.
+   Click a step, or drag the lens along the capsule, to open that step's record. */
+function stepTarget(p, i) {
+  const r = p.records[i]; if (!r || r === '–') return null;
+  const id = r.split(' ')[0];
+  if (/^C\d{4}-\d{3}$/.test(id)) return `#/calculation/${id}`;
+  if (/^O\d{4}-\d{3}$/.test(id)) return `#/quote/${id}`;
+  if (/^V\d{4}-\d{3}$/.test(id)) return `#/order/${id}`;
+  if (/^F\d{4}-\d{3}$/.test(id)) return '#/invoices';
+  if (i === 0 && r.startsWith('Mail')) return '#/inbox';
+  return `#/project/${p.id}`;
+}
+function stepper(p, here) {
+  here = here || p.stage;
+  const from = state.lastStep && state.lastStep.p === p.id ? state.lastStep.here : here;
+  state.lastStep = { p: p.id, here };
+  return `<div class="steps-wrap"><div class="steps-track" data-p="${p.id}" data-here="${here}" style="--n:8;--cur:${p.stage};--pos:${from}">
+    <ol class="uf-steps uf-steps--nav" aria-label="Project steps">${D.journey.map((s, i) => { const h = stepTarget(p, i), n = i + 1, r = p.records[i];
+      const inner = `<span class="step-name">${s}</span><span class="step-rec">${r && r !== '–' ? esc(r) : '–'}</span>`;
+      return `<li class="${n < p.stage ? 'done' : ''}${n === here ? ' here' : ''}" ${n === p.stage ? 'aria-current="step"' : ''}>${h
+        ? `<a class="step-link" href="${h}" data-step="${n}" ${n === here ? 'aria-current="page"' : ''}>${inner}</a>`
+        : `<button type="button" class="step-link step-link--future" data-step="${n}" data-future>${inner}</button>`}</li>`; }).join('')}</ol>
+    <div class="steps-hit" aria-hidden="true"></div>
+    <span class="steps-lens" role="slider" tabindex="0" aria-label="Drag to open a step" aria-valuemin="1" aria-valuemax="8" aria-valuenow="${here}" aria-valuetext="${D.journey[here - 1]}"></span>
+  </div></div>`;
 }
 function recLink(r) {
   if (!r || r === '–') return '<span class="muted">–</span>';
@@ -166,6 +188,25 @@ function quoteRail() {
     + timeline(Q.timeline.slice(0, 3), 'Show 4 more agent events');
 }
 
+/* ---------- planning: bars you can move ---------- */
+const PLAN = [['V2611-003 De Graaf', 1, 2, 'active'], ['V2611-002 Bentacera', 2, 2, 'attention'], ['P2611-009 Politie KPLD (if accepted)', 3, 2, 'neutral']];
+const capOf = wk => { const i = wk - 48; return Math.min(140, 8 + PLAN.reduce((sum, [, s, l, k]) => sum + (i >= s && i < s + l ? (k === 'neutral' ? 4 : 42) : 0), 0)); };
+function moveBar(i, s, quiet) {
+  const [n, old, l] = PLAN[i]; s = Math.max(0, Math.min(5 - l, s));
+  if (s === old) { route(); return; }
+  PLAN[i][1] = s; route();
+  const b = document.querySelector(`[data-bar="${i}"]`); if (b) b.focus();
+  if (!quiet) toast(`${n} moved to week ${48 + s}–${47 + s + l}. Approve the plan to tell the team and the customer.`, () => { PLAN[i][1] = old; route(); });
+}
+let bar = null;
+document.addEventListener('pointerdown', e => { const b = e.target.closest && e.target.closest('.gantt__bar'); if (!b || e.button) return;
+  e.preventDefault(); b.setPointerCapture(e.pointerId); bar = { b, x0: e.clientX, left: b.offsetLeft, w: b.parentElement.clientWidth, i: +b.dataset.bar }; b.classList.add('is-drag'); });
+document.addEventListener('pointermove', e => { if (!bar) return; const max = bar.w - bar.b.offsetWidth; bar.b.style.left = Math.max(0, Math.min(max, bar.left + e.clientX - bar.x0)) + 'px'; });
+document.addEventListener('pointerup', e => { if (!bar) return; const { b, x0, left, w, i } = bar; bar = null; b.classList.remove('is-drag');
+  if (Math.abs(e.clientX - x0) < 4) { b.focus(); return; } moveBar(i, Math.round((left + e.clientX - x0) / w * 5)); });
+document.addEventListener('keydown', e => { const b = e.target.closest && e.target.closest('.gantt__bar'); if (!b || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  e.preventDefault(); const i = +b.dataset.bar; moveBar(i, PLAN[i][1] + (e.key === 'ArrowRight' ? 1 : -1)); });
+
 /* ---------- pages ---------- */
 const state = { view: 'doc' };
 const P = {
@@ -201,7 +242,7 @@ const P = {
     return `${head({ crumbs: [['#/projects', 'Projects'], ['', p.id]], title: `${p.customer} · ${p.name}`, status: p.stage === 3 ? ['attention', 'Quote to verify'] : ['active', D.journey[p.stage - 1]],
       facts: [['Customer', esc(p.customer)], ['Site', esc(p.site)], ['Sale value', eur(p.value || null)], ['Still to be paid', eur(p.open || null)], ['Margin', pct(p.margin)]],
       actions: btn('Edit values') + btn('More', 'quiet') + (p.stage === 3 ? `<a class="uf-pbtn uf-pbtn--primary" href="#/quote/O2611-010">Verify quote</a>` : btn('Next step', 'primary')) })}
-      ${stepper(p.stage, p.records)}
+      ${stepper(p)}
       ${tabset([['ov', 'Overview'], ['calc', 'Calculations', 1], ['q', 'Quotes', 1], ['o', 'Orders', 0], ['f', 'Invoices', 0], ['m', 'Mail', 3], ['files', 'Files', 2]], 'ov', {
         calc: table([{ h: 'Calculation', v: r => recLink(r.id) + ' ' + r.rev }, { h: 'Status', v: r => pill(r.status) }, { h: 'Made by', v: r => esc(r.by) }], D.calculations.slice(0, 1).map(r => ({ ...r, _href: '#/calculation/' + r.id }))),
         q: table([{ h: 'Quote', v: r => recLink(r.id) }, { h: 'Status', v: r => pill(r.status) }, { h: 'Total', num: 1, v: () => eur(totals().sale) }], D.quotes.slice(0, 1).map(r => ({ ...r, _href: '#/quote/' + r.id }))),
@@ -233,7 +274,7 @@ const P = {
       title: isCalc ? 'Calculation C2611-010 R2' : `Quote ${Q.id}`, status: Q.status === 'Sent' ? ['profit', 'Sent'] : ['attention', 'To verify'],
       facts: [['Customer', 'Wallsz · Paul Terlouw'], ['Total excl. VAT', `<span data-live="sale">${eur(t.sale)}</span>`], ['Margin', `<span data-live="margin">${pct(t.margin)}</span>`], ['Valid until', '12 Dec 2026'], [isCalc ? 'Quote' : 'Calculation', isCalc ? recLink('O2611-010') : recLink('C2611-010 R2')]],
       actions: btn('Reject', 'quiet', 'data-reject') + btn('Download PDF', 'secondary', 'data-print') + btn(Q.status === 'Sent' ? 'Sent' : 'Approve and send', 'primary', `data-send ${Q.status === 'Sent' ? 'disabled' : ''}`) })}
-      ${stepper(3, D.projects[0].records)}
+      ${stepper(D.projects[0], isCalc ? 2 : 3)}
       <div class="viewbar"><div class="seg" role="tablist" aria-label="View">
         <button role="tab" data-view="calc" aria-selected="${state.view === 'calc'}">Calculation</button>
         <button role="tab" data-view="doc" aria-selected="${state.view === 'doc'}">Quote document</button></div>
@@ -259,7 +300,7 @@ const P = {
     const p = D.projects.find(x => x.records.includes(o.id)) || D.projects[2];
     return `${head({ crumbs: [['#/orders', 'Orders'], ['', o.id]], title: `Order ${o.id}`, status: o.status, facts: [['Customer', esc(o.customer)], ['Project', recLink(p.id)], ['Delivery', o.delivery], ['Total', eur(o.total)], ['Margin', pct(o.margin)]],
       actions: btn('Edit lines') + btn('Ship in parts', 'secondary') + btn('Make delivery note', 'primary') })}
-      ${stepper(p.stage, p.records)}
+      ${stepper(p, 4)}
       ${tabset([['l', 'Lines', 4], ['p', 'Purchasing', 1], ['d', 'Deliveries', 0], ['f', 'Invoices', 0]], 'l', {
         p: table([{ h: 'Purchase order', v: r => `<b>${r.id}</b>` }, { h: 'Supplier', v: r => esc(r.supplier) }, { h: 'Status', v: r => pill(r.status) }, { h: 'Due', v: r => r.due }], D.purchasing.filter(x => x.for === o.id), { actions: ['Chase supplier', 'Goods received'] }),
         d: '<p class="lead">Nothing delivered yet. Use Make delivery note or Ship in parts.</p>',
@@ -274,12 +315,11 @@ const P = {
   },
   planning() {
     const weeks = ['Week 48', 'Week 49', 'Week 50', 'Week 51', 'Week 52'];
-    const rows = [['V2611-003 De Graaf', 1, 2, 'active'], ['V2611-002 Bentacera', 2, 2, 'attention'], ['P2611-009 Politie KPLD (if accepted)', 3, 2, 'neutral']];
     return `${head({ title: 'Planning', actions: btn('Re-plan') + btn('Approve plan', 'primary') })}
-      <p class="lead">Proposed by the agent from order dates and supplier dates. Drag is not in this prototype; use Re-plan.</p>
+      <p class="lead">Proposed by the agent from order dates and supplier dates. Drag a bar, or select it and use the arrow keys, to move it a week.</p>
       <div class="gantt" style="--w:${weeks.length}"><div></div>${weeks.map(w => `<div class="gantt__h">${w}</div>`).join('')}
-      ${rows.map(([n, s, l, k]) => `<div class="gantt__n">${n}</div><div class="gantt__track" style="grid-column: span ${weeks.length}"><span class="gantt__bar gantt__bar--${k}" style="left:${s * 100 / weeks.length}%;width:${l * 100 / weeks.length}%"></span></div>`).join('')}</div>
-      <h2 class="uf-section-title">Capacity</h2><dl class="drows drows--wide"><div><dt>Montage team week 50</dt><dd class="uf-warn">92 % booked</dd></div><div><dt>Montage team week 51</dt><dd>54 % booked</dd></div></dl>`;
+      ${PLAN.map(([n, s, l, k], i) => `<div class="gantt__n">${n}</div><div class="gantt__track" style="grid-column: span ${weeks.length}"><button type="button" class="gantt__bar gantt__bar--${k}" data-bar="${i}" style="left:${s * 100 / weeks.length}%;width:${l * 100 / weeks.length}%" aria-label="${esc(n)}: week ${48 + s} to ${47 + s + l}. Drag or use arrow keys to move."></button></div>`).join('')}</div>
+      <h2 class="uf-section-title">Capacity</h2><dl class="drows drows--wide"><div><dt>Montage team week 50</dt><dd class="${capOf(50) > 85 ? 'uf-warn' : ''}">${capOf(50)} % booked</dd></div><div><dt>Montage team week 51</dt><dd class="${capOf(51) > 85 ? 'uf-warn' : ''}">${capOf(51)} % booked</dd></div></dl>`;
   },
   invoices() {
     return listPage({ title: 'Invoices', pills: [['All', 3], ['Open', 1], ['Overdue', 1, 'overdue'], ['Paid', 1]], primary: btn('Export to Exact', 'secondary') + btn('New invoice', 'primary', 'data-drawer', 'plus'),
@@ -316,10 +356,30 @@ const P = {
         u: '<p class="lead">Users and roles are planned. For now everyone signs in with the same rights.</p>' })}`;
   },
   ask(q) {
-    q = q || 'Which quotes are open longer than 14 days?';
-    return `${head({ title: 'Ask the portal' })}<form class="askbar" data-ask><input class="field" name="q" value="${esc(q)}" aria-label="Question"><button class="uf-pbtn uf-pbtn--primary">Ask</button></form>
+    q = (q || '').trim();
+    const form = `<form class="askbar" data-ask><input class="field" name="q" value="${esc(q)}" placeholder="For example: open quotes for Wallsz" aria-label="Question"><button class="uf-pbtn uf-pbtn--primary">Ask</button></form>`;
+    if (!q) return `${head({ title: 'Ask the portal' })}${form}<p class="lead">Type a customer, record number, product or question.</p>`;
+    if (/14 days|longer|no reply/i.test(q)) return `${head({ title: 'Ask the portal' })}${form}
       <p class="lead">One quote is open longer than 14 days. This is the list I used:</p>
-      ${table([{ h: 'Quote', v: r => recLink(r.id) }, { h: 'Customer', v: r => esc(r.customer) }, { h: 'Sent', v: r => r.sent }, { h: 'Total', num: 1, v: r => eur(r.total) }], D.quotes.filter(x => x.id === 'O2611-008'))}`;
+      ${table([{ h: 'Quote', v: r => recLink(r.id) }, { h: 'Customer', v: r => esc(r.customer) }, { h: 'Sent', v: r => r.sent }, { h: 'Total', num: 1, v: r => eur(r.total) }], D.quotes.filter(x => x.id === 'O2611-008').map(r => ({ ...r, _href: '#/quote/' + r.id })))}`;
+    const SETS = [['Project', D.projects, r => `#/project/${r.id}`, r => `${r.id} ${r.name}`, r => r.customer, r => D.journey[r.stage - 1]],
+      ['Quote', D.quotes, r => `#/quote/${r.id}`, r => r.id, r => `${r.customer} · ${r.project}`, r => r.status[1]],
+      ['Calculation', D.calculations, r => `#/calculation/${r.id}`, r => `${r.id} ${r.rev}`, r => `${r.customer} · ${r.project}`, r => r.status[1]],
+      ['Order', D.orders, r => `#/order/${r.id}`, r => r.id, r => `${r.customer} · ${r.project || ''}`, r => r.status[1]],
+      ['Invoice', D.invoices, () => '#/invoices', r => r.id, r => r.customer, r => r.status[1]],
+      ['Purchase order', D.purchasing, () => '#/purchasing', r => r.id, r => r.supplier, r => r.status[1]],
+      ['Company', D.relations, () => '#/relations', r => r.name, r => `${r.kind} · ${r.city}`, r => r.contact],
+      ['Article', D.articles, () => '#/articles', r => r.code, r => r.name, r => `${r.stock} in stock`]];
+    const stop = new Set(['open', 'for', 'the', 'a', 'an', 'of', 'and', 'all', 'show', 'me', 'my', 'with', 'which', 'what', 'are', 'is', 'from', 'to', 'in', 'quotes', 'quote', 'orders', 'order', 'projects', 'project', 'invoices', 'invoice']);
+    const kind = (/quote/i.test(q) && 'Quote') || (/order/i.test(q) && 'Order') || (/invoice/i.test(q) && 'Invoice') || (/project/i.test(q) && 'Project') || (/calcul/i.test(q) && 'Calculation') || null;
+    const words = q.toLowerCase().split(/[^a-z0-9-]+/).filter(w => w && !stop.has(w));
+    let hits = [];
+    SETS.forEach(([k, rows, href, id, what, st]) => rows.forEach(r => { const text = JSON.stringify(r).toLowerCase();
+      const n = words.filter(w => text.includes(w)).length; if ((words.length ? n === words.length : true) && (!kind || k === kind)) hits.push({ k, _href: href(r), id: id(r), what: what(r), st: st(r) }); }));
+    if (!hits.length && kind && words.length) hits = [];
+    const say = hits.length ? `I found ${hits.length} record${hits.length > 1 ? 's' : ''} for “${esc(q)}”.` : `I found nothing for “${esc(q)}”. Try a customer name, a record number such as O2611-010, or a product.`;
+    return `${head({ title: 'Ask the portal' })}${form}<p class="lead">${say}</p>
+      ${hits.length ? table([{ h: 'Type', v: r => r.k }, { h: 'Record', v: r => `<a href="${r._href}">${esc(r.id)}</a>` }, { h: 'What', v: r => esc(r.what) }, { h: 'Status', v: r => esc(r.st) }], hits) : ''}`;
   },
 };
 
@@ -335,6 +395,7 @@ function route() {
   $('#view').innerHTML = fn(arg || q);
   renderNav(sec);
   document.title = `${$('#view h1')?.textContent || 'Portal'} · Uniframe portal`;
+  const tr = $('.steps-track'); if (tr) requestAnimationFrame(() => requestAnimationFrame(() => tr.style.setProperty('--pos', tr.dataset.here)));
   $('#view').focus({ preventScroll: true });
   window.scrollTo(0, 0);
 }
@@ -374,6 +435,7 @@ document.addEventListener('click', e => {
   if (!t) return;
   if (t.matches('tr[data-href]') && !e.target.closest('a,button,input')) { location.hash = t.dataset.href; return; }
   if (t.dataset.go) { location.hash = t.dataset.go; return; }
+  if (t.matches('[data-future]')) { stepGo(t.closest('.steps-track'), +t.dataset.step); return; }
   if (t.dataset.view) { state.view = t.dataset.view; document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-selected', b === t)); refreshQuote(); return; }
   if (t.dataset.fix) {
     const l = Q.chapters[+t.dataset.c].lines[+t.dataset.l];
@@ -438,13 +500,49 @@ document.addEventListener('submit', e => {
   const f = e.target; e.preventDefault();
   if (f.matches('[data-tell]')) { const v = f.querySelector('input').value.trim(); if (!v) return;
     Q.timeline.unshift([`You told the agent: "${v}"`, 'Just now']); save(); refreshQuote(); toast('The agent will make a new revision and show you what changed.'); return; }
-  if (f.matches('[data-ask]') || f.id === 'search') { const v = new FormData(f).get('q'); location.hash = `#/ask?q=${encodeURIComponent(v)}`; }
+  if (f.matches('[data-ask]') || f.id === 'search') { const v = (new FormData(f).get('q') || '').trim(); location.hash = `#/ask?q=${encodeURIComponent(v)}`; if (f.id === 'search') f.reset(); }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLayers(); if (e.key === 'Enter' && e.target.matches('.ce')) { e.preventDefault(); e.target.blur(); } });
 document.addEventListener('focusout', e => {
   const el = e.target; if (!el.matches || !el.matches('.ce')) return;
   const l = Q.chapters[+el.dataset.c].lines[+el.dataset.l], v = el.textContent.trim();
   if (v && v !== l.desc) { l.desc = v; l.byYou = true; save(); setTimeout(refreshQuote, 0); }
+});
+
+/* ---------- stepper drag ---------- */
+let drag = null;
+const stepAt = (tr, x) => { const b = tr.getBoundingClientRect(); return Math.min(8, Math.max(1, (x - b.left) / b.width * 8 + 0.5)); };
+function stepHover(tr, n) { tr.querySelectorAll('.uf-steps li').forEach((li, i) => li.classList.toggle('hover', i + 1 === n)); }
+function stepGo(tr, n) {
+  const here = +tr.dataset.here, li = tr.querySelectorAll('.uf-steps li')[n - 1], link = li && li.querySelector('.step-link');
+  tr.classList.remove('is-drag'); stepHover(tr, 0); tr.style.setProperty('--pos', n);
+  if (!link || n === here) return;
+  if (link.matches('[data-future]')) {
+    const p = D.projects.find(x => x.id === tr.dataset.p) || D.projects[0];
+    toast(`${D.journey[n - 1]} is not reached yet. Next: ${p.next}.`);
+    setTimeout(() => tr.style.setProperty('--pos', here), 380); return;
+  }
+  setTimeout(() => { location.hash = link.getAttribute('href'); }, 300);
+}
+document.addEventListener('pointerdown', e => {
+  const hit = e.target.closest && e.target.closest('.steps-lens, .steps-hit'); if (!hit || e.button) return;
+  const tr = hit.closest('.steps-track'); e.preventDefault(); try { getSelection().removeAllRanges(); } catch (x) {} tr.setPointerCapture(e.pointerId); tr.classList.add('is-drag');
+  drag = { tr, x0: e.clientX, onLens: hit.matches('.steps-lens') }; tr.querySelector('.steps-lens').focus({ preventScroll: true });
+  const v = stepAt(tr, e.clientX); if (!drag.onLens) tr.style.setProperty('--pos', v); stepHover(tr, Math.round(v));
+});
+document.addEventListener('dragstart', e => { if (drag) e.preventDefault(); });
+document.addEventListener('pointermove', e => { if (!drag) return; const v = stepAt(drag.tr, e.clientX); drag.tr.style.setProperty('--pos', v); stepHover(drag.tr, Math.round(v)); });
+document.addEventListener('pointerup', e => { if (!drag) return; const { tr, x0, onLens } = drag; drag = null;
+  if (onLens && Math.abs(e.clientX - x0) < 4) { tr.classList.remove('is-drag'); stepHover(tr, 0); return; }
+  stepGo(tr, Math.round(stepAt(tr, e.clientX))); });
+document.addEventListener('pointercancel', () => { if (drag) { const tr = drag.tr; drag = null; stepGo(tr, +tr.dataset.here); } });
+document.addEventListener('keydown', e => {
+  const lens = e.target.closest && e.target.closest('.steps-lens'); if (!lens) return;
+  const tr = lens.parentElement; let v = +lens.getAttribute('aria-valuenow');
+  if (['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(e.key)) { e.preventDefault();
+    v = e.key === 'Home' ? 1 : e.key === 'End' ? 8 : Math.min(8, Math.max(1, v + (e.key === 'ArrowRight' ? 1 : -1)));
+    tr.style.setProperty('--pos', v); stepHover(tr, v); lens.setAttribute('aria-valuenow', v); lens.setAttribute('aria-valuetext', D.journey[v - 1] + ', press Enter to open'); }
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); stepGo(tr, v); }
 });
 
 /* ---------- overlays ---------- */
@@ -481,7 +579,7 @@ function editDrawer() {
 }
 function closeLayers() { $('#modal').hidden = true; $('#panel').hidden = true; $('#scrim').hidden = true; }
 $('#scrim').onclick = closeLayers;
-window.UF = { toast, modal, openDrawer };
+window.UF = { toast, modal, openDrawer, nav: () => renderNav('inbox') };
 
 window.addEventListener('hashchange', route);
 route();

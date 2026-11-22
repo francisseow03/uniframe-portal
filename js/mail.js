@@ -27,6 +27,9 @@ const demo = [
   { id: 'd5', folder: 'sent', from: 'You', to: 'paul.terlouw@wallsz.nl', email: 'paul.terlouw@wallsz.nl', subject: 'Offerte O2611-010', date: '12 Nov', body: 'Beste Paul,\n\nIn de bijlage onze offerte voor Politie KPLD.\n\nMet vriendelijke groet,\nArjan' },
 ];
 
+const FLAGS = LS.get('uf-mail-flags', {});
+demo.forEach(m => { if (FLAGS[m.id]) Object.assign(m, FLAGS[m.id]); });
+const keepFlags = m => { if (!m || !m.id || m.id[0] !== 'd') return; FLAGS[m.id] = { unread: !!m.unread, star: !!m.star }; LS.set('uf-mail-flags', FLAGS); };
 const M = {
   folder: 'inbox', open: null, q: '', token: null, live: null, compose: null,
   local: LS.get('uf-mail-local', []),
@@ -130,6 +133,7 @@ function rfc822({ to, cc, bcc, subject, body, inReplyTo }) {
 /* ---------- events ---------- */
 function rerender() { if (!location.hash.startsWith('#/inbox')) return; document.getElementById('view').innerHTML = render(); }
 function startCompose(c) { M.compose = c; rerender(); setTimeout(() => document.querySelector('.compose [name=' + (c.to ? 'body' : 'to') + ']')?.focus(), 0); }
+function dropDraft() { const id = M.compose && M.compose.draftId; if (id) { M.local = M.local.filter(x => x.id !== id); LS.set('uf-mail-local', M.local); } }
 const find = id => (M.live || demo).concat(M.local).find(m => m.id === id);
 const quote = m => `\n\n\nOn ${m.date}, ${m.from} wrote:\n> ` + (m.body || '').replace(/\n/g, '\n> ');
 
@@ -138,18 +142,19 @@ document.addEventListener('click', e => {
   const a = t.dataset.m, v = t.dataset.v, m = v && find(v);
   if (a === 'folder') { M.folder = v; M.lane = null; M.open = null; if (M.live && (v === 'inbox' || v === 'sent')) refresh(); rerender(); }
   else if (a === 'lane') { M.folder = 'lane'; M.lane = v; M.open = null; rerender(); }
-  else if (a === 'open') { M.open = v; if (m) m.unread = false; rerender(); }
-  else if (a === 'star') { m.star = !m.star; rerender(); }
+  else if (a === 'open') { if (m && m.folder === 'drafts') { startCompose({ ...m, title: 'Draft', draftId: m.id }); return; } M.open = v; if (m) { m.unread = false; keepFlags(m); } rerender(); window.UF.nav && window.UF.nav(); }
+  else if (a === 'star') { m.star = !m.star; keepFlags(m); rerender(); }
   else if (a === 'compose') startCompose({});
   else if (a === 'reply' || a === 'replyall') startCompose({ title: 'Reply', to: m.email, cc: a === 'replyall' ? (m.to || '') : '', subject: /^re:/i.test(m.subject) ? m.subject : 'RE: ' + m.subject, body: quote(m), threadId: m.threadId, inReplyTo: m.msgId });
   else if (a === 'usedraft') startCompose({ title: 'Reply', to: m.email, subject: /^re:/i.test(m.subject) ? m.subject : 'RE: ' + m.subject, body: m.draft + quote(m) });
   else if (a === 'forward') startCompose({ title: 'Forward', subject: 'FW: ' + m.subject, body: '\n\n---------- Forwarded message ----------\nFrom: ' + m.from + ' <' + (m.email || '') + '>\nSubject: ' + m.subject + '\n\n' + (m.body || '') });
   else if (a === 'discard') { M.compose = null; rerender(); }
-  else if (a === 'savedraft') { const d = Object.fromEntries(new FormData(t.closest('form'))); M.local.unshift({ id: 'l' + Date.now(), folder: 'drafts', from: 'You', date: 'Now', ...d }); LS.set('uf-mail-local', M.local); M.compose = null; rerender(); window.UF.toast('Draft saved.'); }
+  else if (a === 'savedraft') { const d = Object.fromEntries(new FormData(t.closest('form'))); dropDraft(); M.local.unshift({ id: 'l' + Date.now(), folder: 'drafts', from: 'You', date: 'Now', ...d }); LS.set('uf-mail-local', M.local); M.compose = null; rerender(); window.UF.toast('Draft saved.'); }
   else if (a === 'connect') connect();
   else if (a === 'disconnect') { if (M.token && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(M.token); M.token = null; M.live = null; rerender(); window.UF.toast('Gmail disconnected.'); }
   else if (a === 'refresh') refresh();
 }, true);
+document.addEventListener('input', e => { if (!e.target.closest('form.mail__search')) return; M.q = e.target.value; const pos = e.target.selectionStart; rerender(); const i = document.querySelector('.mail__search input'); if (i) { i.focus(); i.setSelectionRange(pos, pos); } });
 document.addEventListener('submit', async e => {
   const f = e.target; if (!f.matches('form[data-m]')) return; e.preventDefault(); e.stopPropagation();
   if (f.dataset.m === 'search') { M.q = new FormData(f).get('q'); rerender(); return; }
@@ -162,9 +167,9 @@ document.addEventListener('submit', async e => {
     window.open('https://mail.google.com/mail/?view=cm&fs=1&' + qs, '_blank', 'noopener');
     window.UF.toast('Gmail opened in a new tab with your mail. Press Send there.');
   }
-  M.local.unshift({ id: 'l' + Date.now(), folder: 'sent', from: 'You', email: d.to, date: 'Now', ...d }); LS.set('uf-mail-local', M.local);
+  dropDraft(); M.local.unshift({ id: 'l' + Date.now(), folder: 'sent', from: 'You', email: d.to, date: 'Now', ...d }); LS.set('uf-mail-local', M.local);
   M.compose = null; rerender();
 }, true);
 
-window.UFMail = { render, connect, get connected() { return !!M.live; } };
+window.UFMail = { render, connect, get connected() { return !!M.live; }, get unread() { return counts().inbox; } };
 })();
