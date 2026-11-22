@@ -99,7 +99,7 @@ function steps(p) {
 function next(p) {
   const s = stage(p), q = p.quote && Qt(p.quote), o = p.order && O_(p.order), d = o && o.delivery && L_(o.delivery), f = o && finalOf(o.id);
   switch (s) {
-    case 1: return { label: 'Make calculation', act: 'calc', arg: p.id, text: p.request.asked ? `Waiting for ${p.customer} to answer the questions` : p.request.read ? 'Check what the agent read, then make the calculation' : 'Let the agent read the request and draft the calculation', href: `#/request/${p.id}` };
+    case 1: return { label: 'Make calculation', act: 'calc', arg: p.id, text: p.request.asked ? `Waiting for ${p.customer} to provide the missing details` : p.request.read ? 'Verify the extracted details, then make the calculation' : 'Extract the details and make the calculation', href: `#/request/${p.id}` };
     case 2: return { label: 'Make quote', act: 'toquote', arg: q.id, text: `Check ${q.calc}, then make the quote`, href: `#/calculation/${q.calc}` };
     case 3:
       if (q.status === 'To verify') return { label: 'Approve and send', act: 'sendquote', arg: q.id, text: `Verify quote ${q.id} and send it`, href: `#/quote/${q.id}` };
@@ -123,7 +123,7 @@ function orderState(o) {
 
 /* ---------- navigation ---------- */
 const NAV = [
-  { items: [['today', 'Today', 'today'], ['inbox', 'Inbox', 'inbox', () => window.UFMail ? window.UFMail.unread : 0]] },
+  { items: [['today', 'Today', 'today'], ['inbox', 'Inbox', 'inbox', () => window.UFMail ? window.UFMail.unread : 0], ['whatsapp', 'WhatsApp', 'chat', () => window.UFWhatsApp ? window.UFWhatsApp.unread : 0]] },
   { group: 'Sales', items: [['projects', 'Projects', 'projects'], ['calculations', 'Calculations', 'calc'], ['quotes', 'Quotes', 'quotes', () => Object.values(S.quotes).filter(q => q.status === 'To verify').length]] },
   { group: 'Fulfilment', items: [['orders', 'Orders', 'orders'], ['purchasing', 'Purchasing', 'purchasing', () => S.purchases.filter(x => purState(x)[0] === 'loss').length], ['planning', 'Planning', 'planning']] },
   { group: 'Money', items: [['invoices', 'Invoices', 'invoices', () => S.invoices.filter(i => invState(i)[0] === 'loss').length]] },
@@ -213,10 +213,10 @@ function checks(q) {
   const out = [];
   q.chapters.forEach((c, ci) => c.lines.forEach((l, li) => {
     const nr = `${ci + 1}.${li + 1}`;
-    if (!l.cost) out.push({ kind: 'loss', text: `Line ${nr} "${l.desc}" has no price. ${l.hint ? `Last time (${l.hint.from}) it was ${eur(l.hint.price)}.` : 'It is not in the catalogue, so a person prices it. The agent never types a price.'}`, ...(l.hint ? { fix: `data-fix="price" data-c="${ci}" data-l="${li}" data-v="${l.hint.price}"`, label: `Use ${eur(l.hint.price)}` } : {}) });
+    if (!l.cost) out.push({ kind: 'loss', text: `Line ${nr} "${l.desc}" has no price. ${l.hint ? `Last time (${l.hint.from}) it was ${eur(l.hint.price)}.` : 'It is not in the catalogue: enter a price. The agent does not set prices.'}`, ...(l.hint ? { fix: `data-fix="price" data-c="${ci}" data-l="${li}" data-v="${l.hint.price}"`, label: `Use ${eur(l.hint.price)}` } : {}) });
     else if (l.margin < MARGIN_FLOOR) out.push({ kind: 'attention', text: `Line ${nr} has ${l.margin} % margin. Your floor is ${MARGIN_FLOOR} %.`, fix: `data-fix="margin" data-c="${ci}" data-l="${li}" data-v="${MARGIN_FLOOR}"`, label: `Set to ${MARGIN_FLOOR} %` });
-    if (l.src === 'missing' || (l.cost && !(l.qty > 0))) out.push({ kind: 'loss', text: `Line ${nr} has no quantity. The request did not say. Ask the customer, or enter it yourself.` });
-    if (l.src === 'attachment') out.push({ kind: 'attention', text: `Line ${nr}: the quantity was read from a plan or schedule. Please check it.` });
+    if (l.src === 'missing' || (l.cost && !(l.qty > 0))) out.push({ kind: 'loss', text: `Line ${nr} has no quantity because the request does not state it. Request it from the customer or enter it.` });
+    if (l.src === 'attachment') out.push({ kind: 'attention', text: `Line ${nr}: the quantity comes from a drawing or schedule. Verify it.` });
     if (l.check && l.note) out.push({ kind: 'attention', text: `Line ${nr}: ${l.note} Check the price.` });
     if (l.src === 'estimate') out.push({ kind: 'neutral', text: `Line ${nr} is an estimate. ${l.note || ''}` });
     if (l.byYou) out.push({ kind: 'neutral', text: `You changed line ${nr}. I keep your value and will not overwrite it.` });
@@ -301,7 +301,7 @@ const P = {
     S.projects.forEach(p => { const s = stage(p), n = next(p);
       if (s === 1) { const rd = p.request.read, chk = rd ? Object.values(rd.fields).filter(f => f.status === 'check').length : 0, ms = rd ? rd.missing.length : 0;
         if (p.request.asked) needs.push(['neutral', 'Waiting', `${p.customer}: asked ${daysFrom(p.request.asked, TODAY)} days ago for ${ms || 'the missing'} detail${ms === 1 ? '' : 's'}`, n.href, 'Open request']);
-        else needs.push(['active', 'New request', `${p.customer}: ${p.name}${rd ? ` (${chk ? chk + ' to check' : 'read'}${ms ? ', ' + ms + ' to ask' : ''})` : ''}`, n.href, 'Open request']); }
+        else needs.push(['active', 'New request', `${p.customer}: ${p.name}${rd ? ` (${chk ? chk + ' to verify' : 'details extracted'}${ms ? ', ' + ms + ' missing' : ''})` : ''}`, n.href, 'Open request']); }
       if (s === 2) needs.push(['neutral', 'Calculation', `${p.customer}: ${n.text}`, n.href, 'Open calculation']);
       if (s === 5) needs.push(['active', 'Delivery', `${p.customer}: ${n.text}`, n.href, 'Open delivery note']);
       if (s === 6) needs.push(['neutral', 'Money', `${p.customer}: ${n.text}`, n.href, 'Open']); });
@@ -324,6 +324,7 @@ const P = {
       </aside></div>`;
   },
   inbox(id) { return window.UFMail.render(id); },
+  whatsapp(id) { return window.UFWhatsApp.render(id); },
   projects() {
     return listPage({ title: 'Projects', cats: J, primary: btn('New project', 'primary', 'data-new="project"', 'plus'),
       cols: [{ h: 'Project', v: r => `${recLink(r.id)} ${esc(r.name)}` }, { h: 'Customer', v: r => esc(r.customer) }, { h: 'Stage', v: r => J[stage(r) - 1] }, { h: 'Next step', v: r => esc(next(r)?.text || 'Done') },
@@ -359,26 +360,26 @@ const P = {
   request(id) {
     const p = P_(id); if (!p) return notFound('Request', id);
     const q = p.quote && Qt(p.quote), r = p.request, rd = r.read, C = AG().CHECK;
-    const ST = { found: ['profit', 'Found'], check: ['attention', 'Please check'], assumed: ['neutral', 'Assumed'], missing: ['loss', 'Must ask'], optional: ['neutral', 'Optional'] };
+    const ST = { found: ['profit', 'Found'], check: ['attention', 'Verify'], assumed: ['neutral', 'Default'], missing: ['loss', 'Missing'], optional: ['neutral', 'Optional'] };
     const need = rd ? C.filter(c => rd.fields[c.key].status === 'check').length : 0, miss = rd ? rd.missing.length : 0;
     const rows = rd ? C.map(c => { const f = rd.fields[c.key]; return `<tr><td><b>${c.label}</b></td><td><input class="edit rf" data-rf="${c.key}" data-p="${p.id}" value="${esc(f.value)}" placeholder="${c.req ? 'Not stated' : '–'}" aria-label="${c.label}">${c.unit ? `<span class="muted"> ${c.unit}</span>` : ''}${f.note ? `<span class="uf-second">${esc(f.note)}</span>` : ''}</td><td>${f.source ? esc(AG().SRC[f.source] || f.source) : '<span class="muted">–</span>'}</td><td>${pill(ST[f.status])}</td></tr>`; }).join('') : '';
-    const conf = rd ? rd.conflicts.map(k => { const c = C.find(x => x.key === k.key); return `<li class="check check--attention"><span><b>${c.label}:</b> ${k.options.map(o => `${esc(o.value)} (${esc(AG().SRC[o.source] || o.source)})`).join(' and ')} do not agree. Pick one.</span><span class="rowbtns">${k.options.map(o => `<button class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" data-pick="${p.id}|${k.key}|${esc(o.value)}">Use ${esc(o.value)}</button>`).join('')}</span></li>`; }).join('') : '';
-    const actions = (r.mail ? `<a class="uf-pbtn uf-pbtn--secondary" href="#/inbox/${r.mail}">Open mail in Inbox</a>` : '')
-      + (rd && miss && !q ? doBtn('Ask the customer', 'askcustomer', p.id) : '') + (q ? `<a class="uf-pbtn uf-pbtn--primary" href="#/calculation/${q.calc}">Open calculation ${q.calc}</a>` : doBtn('Make calculation', 'calc', p.id, 'primary'));
-    const engine = rd ? `<p>${esc(engineLine(rd))}</p>${rd.summary ? `<p>${esc(rd.summary)}</p>` : ''}<p class="muted">${need ? `${need} value${need > 1 ? 's' : ''} to check` : 'Nothing to check'}${miss ? `, ${miss} to ask the customer` : ''}. Change any value. A value you change is locked: the agent never overwrites it.</p>${rd.engine !== 'google' && !AG().cfg().key ? '<p class="muted">For the real agent, add your Google API key in <a href="#/settings">Settings → Agent</a>.</p>' : ''}${(rd.flags || []).map(f => `<p class="check check--attention"><span>${esc(f)}</span></p>`).join('')}`
-      : '<p>The agent has not read this request yet. It can read it now and fill in the fields, or you can make the calculation by hand.</p>';
-    return `${head({ crumbs: [['#/projects', 'Projects'], [`#/project/${p.id}`, `${p.id} ${p.name}`], ['', 'Request']], title: `Request from ${p.customer}`, status: r.asked && !q ? ['attention', `Waiting for customer since ${fmt(r.asked)}`] : ['profit', `${r.via}, ${fmt(r.date)}`],
+    const conf = rd ? rd.conflicts.map(k => { const c = C.find(x => x.key === k.key); return `<li class="check check--attention"><span><b>${c.label}:</b> ${k.options.map(o => `${esc(AG().SRC[o.source] || o.source)} says ${esc(o.value)}`).join(', ')}. Select the correct value.</span><span class="rowbtns">${k.options.map(o => `<button class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" data-pick="${p.id}|${k.key}|${esc(o.value)}">Use ${esc(o.value)}</button>`).join('')}</span></li>`; }).join('') : '';
+    const actions = (r.mail ? `<a class="uf-pbtn uf-pbtn--secondary" href="#/inbox/${r.mail}">Open e-mail</a>` : '') + (r.wa ? `<a class="uf-pbtn uf-pbtn--secondary" href="#/whatsapp/${r.wa}">Open conversation</a>` : '')
+      + (rd && miss && !q ? doBtn('Request missing details', 'askcustomer', p.id) : '') + (q ? `<a class="uf-pbtn uf-pbtn--primary" href="#/calculation/${q.calc}">Open calculation ${q.calc}</a>` : doBtn('Make calculation', 'calc', p.id, 'primary'));
+    const engine = rd ? `<p>${esc(engineLine(rd))}</p>${rd.summary ? `<p>${esc(rd.summary)}</p>` : ''}<p class="muted">${need ? `${need} value${need > 1 ? 's' : ''} to verify` : 'No values to verify'}${miss ? `, ${miss} missing` : ''}. Every value can be edited. Edited values are locked and never overwritten by the agent.</p>${rd.engine !== 'google' && !AG().cfg().key ? '<p class="muted">For the full agent, add a Google API key in <a href="#/settings">Settings → Agent</a>.</p>' : ''}${(rd.flags || []).map(f => `<p class="check check--attention"><span>${esc(f)}</span></p>`).join('')}`
+      : '<p>The details of this request have not been extracted yet. Extract them now, or make the calculation yourself.</p>';
+    return `${head({ crumbs: [['#/projects', 'Projects'], [`#/project/${p.id}`, `${p.id} ${p.name}`], ['', 'Request']], title: `Request from ${p.customer}`, status: r.asked && !q ? ['attention', `Waiting for customer since ${fmt(r.asked)}`] : ['profit', `${VIA[r.via] || r.via}, ${fmt(r.date)}`],
       facts: [['From', esc(p.contact)], ['E-mail', esc(p.email || '–')], ['Site', esc(p.site)], ['Received', fmtNL(r.date)]], actions })}
       ${stepper(p, 1)}
       <div class="split"><div class="split__main">
-        ${p.newCustomer ? `<p class="check check--attention"><span>New customer. The agent made the company from this request. Check the name and contact in <a href="#/relations">Customers and suppliers</a>.</span></p>` : ''}
-        <article class="reqcard"><div class="reqcard__head"><b>${esc(p.contact)}, ${esc(p.customer)}</b><span class="muted">${r.via === 'Mail' ? esc(p.email) : `${esc(r.via)}, noted by Arjan`} · ${fmt(r.date)}</span></div><p>${esc(r.text).replace(/\n/g, '<br>')}</p>${(r.files || []).length ? `<p class="attach">${I('upload')}${esc(r.files.join(', '))}</p>` : ''}</article>
-        ${rd ? `<h2 class="uf-section-title">What the agent understood</h2>
+        ${p.newCustomer ? `<p class="check check--attention"><span>New customer created from this request. Verify the company details in <a href="#/relations">Customers and suppliers</a>.</span></p>` : ''}
+        <article class="reqcard"><div class="reqcard__head"><b>${esc(p.contact)}, ${esc(p.customer)}</b><span class="muted">${r.via === 'Mail' ? esc(p.email) : r.via === 'WhatsApp' ? `WhatsApp${rd && rd.fields.phone && rd.fields.phone.value ? ', ' + esc(rd.fields.phone.value) : ''}` : `${esc(VIA[r.via] || r.via)}, recorded by Arjan Laninga`} · ${fmt(r.date)}</span></div><p>${esc(r.text).replace(/\n/g, '<br>')}</p>${(r.files || []).length ? `<p class="attach">${I('upload')}${esc(r.files.join(', '))}</p>` : ''}</article>
+        ${rd ? `<h2 class="uf-section-title">Extracted details</h2>
           ${conf ? `<ul class="checks">${conf}</ul>` : ''}
           <table class="uf-table uf-table--open reqt"><thead><tr><th>Field</th><th>Value</th><th>Source</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>
-          ${rd.extras.length ? `<h2 class="uf-section-title">Other items asked for</h2><ul class="plain">${rd.extras.map(x => `<li>${esc(x.desc)}${x.qty ? `, ${x.qty} ${esc(x.unit)}` : ''}<span class="uf-second">Becomes a line in the calculation. If it is not in the catalogue, a person prices it.</span></li>`).join('')}</ul>` : ''}`
-        : `<div>${doBtn('Let the agent read this', 'readreq', p.id, 'secondary')}</div>`}
-      </div><aside class="split__rail">${agentPanel('What the agent read', engine)}</aside></div>`;
+          ${rd.extras.length ? `<h2 class="uf-section-title">Additional items</h2><ul class="plain">${rd.extras.map(x => `<li>${esc(x.desc)}${x.qty ? `, ${x.qty} ${esc(x.unit)}` : ''}<span class="uf-second">Added to the calculation. Items that are not in the catalogue need a price.</span></li>`).join('')}</ul>` : ''}`
+        : `<div>${doBtn('Extract details', 'readreq', p.id, 'secondary')}</div>`}
+      </div><aside class="split__rail">${agentPanel('Agent summary', engine)}</aside></div>`;
   },
   calculations() {
     return listPage({ title: 'Calculations', cats: ['Calculating', 'Quoted'], primary: btn('New calculation', 'primary', 'data-new="calc"', 'plus'),
@@ -513,7 +514,7 @@ const P = {
       <h2 class="uf-section-title">Capacity</h2><dl class="drows drows--wide">${weeks.map(w => `<div><dt>Montage team week ${w}</dt><dd class="${cap(w) > 85 ? 'uf-warn' : ''}">${cap(w)} % booked</dd></div>`).join('')}</dl>`;
   },
   relations() {
-    return listPage({ title: 'Customers and suppliers', cats: ['Customer', 'Supplier'], primary: btn('New company', 'primary', 'data-new="company"', 'plus'),
+    return listPage({ title: 'Customers and suppliers', cats: ['Customer', 'Supplier'], primary: btn('New customer or supplier', 'primary', 'data-new="company"', 'plus'),
       cols: [{ h: 'Company', v: r => `<b>${esc(r.name)}</b>${r.toConfirm ? ' <span class="uf-pill uf-pill--attention">Confirm</span>' : ''}` }, { h: 'Type', v: r => r.kind }, { h: 'Contact', v: r => esc(r.contact) }, { h: 'E-mail', v: r => esc(r.email || '–') }, { h: 'City', v: r => esc(r.city) },
         { h: 'Open', v: r => { const n = r.kind === 'Customer' ? S.projects.filter(p => p.customer === r.name && stage(p) < 8).length : S.purchases.filter(x => x.supplier === r.name && x.step < 5).length; return n ? `${n} ${r.kind === 'Customer' ? 'project' : 'purchase'}${n > 1 ? 's' : ''}` : '–'; } }],
       rows: S.relations.map(r => ({ ...r, _cat: r.kind })), detail: { actions: ['Write an email', 'New project for this company', 'Edit company'] } });
@@ -534,7 +535,7 @@ const P = {
       <dl class="rules">${r.map(([k, v, h]) => `<div><dt>${k}${h ? `<span class="uf-second">${h}</span>` : ''}</dt><dd><input class="field" value="${v}" aria-label="${k}"></dd></div>`).join('')}</dl>`;
   },
   settings() {
-    const conn = [['Exact Online', ['profit', 'Connected']], ['Gmail', window.UFMail && window.UFMail.connected ? ['profit', 'Connected'] : ['neutral', 'Example mode']], ['Outlook', ['neutral', 'Not connected']], ['WhatsApp Business', ['attention', 'Needs a new login']]];
+    const conn = [['Exact Online', ['profit', 'Connected']], ['Gmail', window.UFMail && window.UFMail.connected ? ['profit', 'Connected'] : ['neutral', 'Example mode']], ['Outlook', ['neutral', 'Not connected']], ['WhatsApp Business', ['neutral', 'Example conversations']]];
     let cid = ''; try { cid = JSON.parse(localStorage.getItem('uf-gmail-client') || '""'); } catch (e) {}
     const field = (k, v) => `<div><dt>${k}</dt><dd><input class="field" value="${esc(v)}" aria-label="${k}"></dd></div>`;
     return `${head({ title: 'Settings', actions: btn('Save', 'primary', 'data-save="Settings saved."') })}
@@ -542,7 +543,7 @@ const P = {
         ag: agentTab(),
         c: `<dl class="rules">${field('Company name', 'Uniframe Systems')}${field('Address', 'IJsselweg 41C, 7061 XV Terborg')}${field('KvK', '42160232')}${field('Phone', '06 53 56 32 32')}</dl>`,
         d: `<dl class="rules">${field('Quote valid for', '30 days')}${field('Payment term', '14 days')}${field('Default margin', '20 %')}${field('VAT', '21 %')}</dl>`,
-        con: `<dl class="rules">${conn.map(([k, st]) => `<div><dt>${k}</dt><dd>${pill(st)} ${k === 'Gmail' ? (window.UFMail.connected ? btn('Open inbox', 'secondary', 'data-go="#/inbox"') : btn('Connect Gmail', 'secondary', 'data-gmail')) : btn(st[1] === 'Connected' ? 'Disconnect' : 'Connect', 'secondary')}</dd></div>`).join('')}
+        con: `<dl class="rules">${conn.map(([k, st]) => `<div><dt>${k}</dt><dd>${pill(st)} ${k === 'WhatsApp Business' ? btn('How to connect', 'secondary', 'data-wahelp') : k === 'Gmail' ? (window.UFMail.connected ? btn('Open inbox', 'secondary', 'data-go="#/inbox"') : btn('Connect Gmail', 'secondary', 'data-gmail')) : btn(st[1] === 'Connected' ? 'Disconnect' : 'Connect', 'secondary')}</dd></div>`).join('')}
           <div><dt>Gmail OAuth client ID<span class="uf-second">From Google Cloud. Needed to read and send real mail. Without it, mail is sent in example mode: saved in Sent, not delivered.</span></dt><dd><input class="field" id="gcid" value="${esc(cid)}" placeholder="…apps.googleusercontent.com" aria-label="Gmail OAuth client ID"></dd></div></dl>`,
         m: `<dl class="rules">${field('Quote follow-up after', '14 days')}${field('Payment reminder after', '3 days')}${field('Signature', 'Met vriendelijke groet, Arjan Laninga')}</dl>`,
         x: `<p class="lead">Everything you do in this prototype is saved in this browser only. Reset puts all projects, orders, purchases, invoices and mail back to the example.</p><div>${btn('Reset example data', 'secondary', 'data-resetall')}</div>` })}`;
@@ -584,10 +585,10 @@ function nextNum() {
   return String(n).padStart(3, '0');
 }
 function run(fn) {
-  const snap = JSON.stringify(S), mail = window.UFMail.dump(), from = location.hash;
+  const snap = JSON.stringify(S), mail = window.UFMail.dump(), wa = window.UFWhatsApp ? window.UFWhatsApp.dump() : null, from = location.hash;
   const r = fn(); if (!r) return;
   const [msg, go] = r; save();
-  const undo = () => { S = JSON.parse(snap); window.UFMail.restore(mail); save(); state.lockView = true;
+  const undo = () => { S = JSON.parse(snap); window.UFMail.restore(mail); if (wa) window.UFWhatsApp.restore(wa); save(); state.lockView = true;
     if (location.hash !== from) location.hash = from; else { state.keepScroll = true; route(); } toast('Undone.'); };
   closeLayers();
   if (go && location.hash !== go) location.hash = go; else { state.lockView = true; state.keepScroll = true; route(); }
@@ -606,11 +607,12 @@ const greet = p => /^(afdeling|planning|verkoop|contact|inkoop)/i.test(p.contact
 const sig = '\n\nMet vriendelijke groet,\nArjan Laninga\nUniframe Systems · 06 53 62 86 14';
 /* ---------- the agent's work: customer, project, calculation lines, changes ---------- */
 const AG = () => window.UFAgent;
+const VIA = { Mail: 'E-mail', Phone: 'Phone call', Visit: 'Site visit', Meeting: 'Meeting', WhatsApp: 'WhatsApp', 'By hand': 'Entered manually' };
 /* Where an order line comes from: a supplier, the factory, or our own team */
 const lineSrc = (l, purs) => { const k = keyOf(l), a = (l.art && S.articles.find(x => x.code === l.art)) || (k && S.articles.find(x => x.key === k)); if (a) return a.supplier ? `Supplier: ${a.supplier}` : a.source;
   const x = purs.find(p => covers(p, l)); return x ? `Supplier: ${x.supplier}` : (l.unit === 'uur' || l.unit === 'post') ? 'Own team' : 'Own factory'; };
-const srcLabel = l => l.src === 'missing' ? '<span class="src src--missing">Missing</span>' : l.src ? `<span class="src src--${l.src}">${esc(({ mail: 'Mail', attachment: 'Plan', notes: 'Your notes', default: 'Default', person: 'Set by you', estimate: 'Estimate' })[l.src] || l.src)}</span>` : '<span class="muted">–</span>';
-const engineLine = r => !r ? '' : r.engine === 'google' ? `Read by the Google model ${r.model} in ${(r.ms / 1000).toFixed(1)} s.` : `Read by the example reader${r.reason ? ` (the Google call failed: ${r.reason})` : ''}.`;
+const srcLabel = l => l.src === 'missing' ? '<span class="src src--missing">Missing</span>' : l.src ? `<span class="src src--${l.src}">${esc(({ mail: 'E-mail', whatsapp: 'WhatsApp', attachment: 'Drawing', notes: 'Call notes', default: 'Default', person: 'Entered by you', estimate: 'Estimate', match: 'Customer record' })[l.src] || l.src)}</span>` : '<span class="muted">–</span>';
+const engineLine = r => !r ? '' : r.engine === 'google' ? `Read by the Google model ${r.model} in ${(r.ms / 1000).toFixed(1)} s.` : `Read by the basic reader${r.reason ? ` (the Google request failed: ${r.reason})` : ''}.`;
 const A_ = k => S.articles.find(a => a.key === k);
 const keyOf = l => l.key || (/systeemwand dicht/i.test(l.desc) ? 'wall-solid' : /systeemwand (enkel|dubbel)/i.test(l.desc) ? 'wall' : /kozijn/i.test(l.desc) ? 'frame' : /hang- en sluit/i.test(l.desc) ? 'hw' : /opdekdeur|^deur/i.test(l.desc) ? 'door' : /montage/i.test(l.desc) ? 'install' : /transport/i.test(l.desc) ? 'transport' : '');
 const lineFrom = (a, qty, src, note, extra = {}) => ({ key: a.key, art: a.code, desc: a.desc || a.name, qty: qty ?? 0, unit: a.unit, cost: a.cost, margin: a.margin, src: qty == null ? 'missing' : src, ...(note ? { note } : {}), ...extra });
@@ -651,16 +653,17 @@ const domainName = em => String(em || '').split('@')[1] ? cap1(em.split('@')[1].
 const cap1 = s => s.replace(/\b\w/g, c => c.toUpperCase());
 function matchCustomer(rd) {
   const em = (rd.fields.email.value || '').toLowerCase(), dom = em.split('@')[1], cust = S.relations.filter(x => x.kind === 'Customer'), nm = (rd.fields.customer.value || '').toLowerCase();
-  return (dom && cust.find(x => (x.email || '').toLowerCase().endsWith('@' + dom))) || (nm && cust.find(x => x.name.toLowerCase().includes(nm) || nm.includes(x.name.toLowerCase()))) || null;
+  const ph = String(rd.fields.phone && rd.fields.phone.value || '').replace(/\D/g, '').slice(-9);
+  return (ph.length === 9 && cust.find(x => String(x.phone || '').replace(/\D/g, '').slice(-9) === ph)) || (dom && cust.find(x => (x.email || '').toLowerCase().endsWith('@' + dom))) || (nm && cust.find(x => x.name.toLowerCase().includes(nm) || nm.includes(x.name.toLowerCase()))) || null;
 }
-function newProject(rd, { via, text, files = [], mail }) {
+function newProject(rd, { via, text, files = [], mail, wa }) {
   const f = k => rd.fields[k].value; let rel = matchCustomer(rd), isNew = false;
   if (rel && !f('customer')) rd.fields.customer = { value: rel.name, source: 'match', status: 'found' };
-  if (!rel) { rel = { name: f('customer') || domainName(f('email')), kind: 'Customer', contact: f('contact') || 'Contact', email: f('email') || '', city: '–', toConfirm: true }; S.relations.push(rel); isNew = true; }
+  if (!rel) { rel = { name: f('customer') || (f('email') ? domainName(f('email')) : f('contact') || 'Unknown customer'), kind: 'Customer', contact: f('contact') || 'Contact', email: f('email') || '', phone: f('phone') || '', city: '–', toConfirm: true }; S.relations.push(rel); isNew = true; }
   const id = `P2611-${nextNum()}`;
   S.projects.unshift({ id, name: f('project') || f('site') || 'New project', customer: rel.name, contact: f('contact') || rel.contact, email: f('email') || rel.email, site: f('site') || '–', created: TODAY, newCustomer: isNew,
-    request: { via, date: TODAY, text, ...(mail ? { mail } : {}), files: files.map(x => x.name), read: rd } });
-  logA(`${rd.engine === 'google' ? 'Google model' : 'Example reader'} read ${via === 'Mail' ? 'a mail' : 'your notes'} from ${f('contact') || rel.name} and made project ${id}`, 'agent');
+    request: { via, date: TODAY, text, ...(mail ? { mail } : {}), ...(wa ? { wa } : {}), files: files.map(x => x.name), read: rd } });
+  logA(`${rd.engine === 'google' ? 'Google model' : 'Basic reader'} read ${via === 'Mail' ? 'an e-mail' : via === 'WhatsApp' ? 'a WhatsApp conversation' : 'call notes'} from ${f('contact') || rel.name} and created request ${id}`, 'agent');
   return id;
 }
 /* A person edits or picks a value on the request. It is locked (source: person) and follows into the calculation. */
@@ -675,10 +678,10 @@ function draftLines(p) { return buildLines(p.request.read || AG()._normalize(AG(
 const purchasePrice = l => Math.round(l.cost * 0.65 * 100) / 100;
 const ASKQ = { length: 'Hoe lang is de wand? (in meters)', height: 'Wat is de hoogte van de wand? (2600 / 3000 / 3200 mm / anders)', doors: 'Hoeveel deuren zijn er nodig?', site: 'Wat is het adres van de locatie?' };
 const DO = {
-  readreq(pid) { const p = P_(pid); toast('The agent is reading the request…');
+  readreq(pid) { const p = P_(pid); toast('Extracting the details…');
     AG().read({ text: p.request.text, via: p.request.via === 'Mail' ? 'Mail' : 'Phone' }).then(rd => run(() => { p.request.read = rd;
       [['customer', p.customer], ['contact', p.contact], ['email', p.email], ['site', p.site === '–' ? '' : p.site]].forEach(([k, v]) => { if (v && !rd.fields[k].value) rd.fields[k] = { value: v, source: 'match', status: 'found' }; }); logA(`${rd.engine === 'google' ? 'Google model' : 'Example reader'} read the request of ${p.customer}`, 'agent');
-      return [`The agent read the request.${rd.missing.length ? ` ${rd.missing.length} required detail${rd.missing.length > 1 ? 's are' : ' is'} missing.` : ' All required details were found.'}`]; })); },
+      return [`Details extracted.${rd.missing.length ? ` ${rd.missing.length} required detail${rd.missing.length > 1 ? 's are' : ' is'} missing.` : ' All required details were found.'}`]; })); },
   askcustomer(pid) { const p = P_(pid), rd = p.request.read, ask = rd.missing.filter(k => ASKQ[k]);
     if (!ask.length) { toast('Nothing is missing, so there is nothing to ask.'); return; }
     mailModal({ title: 'Ask the customer', to: p.email, subject: `Uw aanvraag: ${p.name}`, body: `${greet(p)}\n\nDank voor uw aanvraag. Om een goede prijs te maken hebben we nog ${ask.length === 1 ? 'één gegeven' : 'een paar gegevens'} nodig:\n\n${ask.map((k, i) => `${i + 1}. ${ASKQ[k]}`).join('\n')}\n\nWeet u iets nog niet? Laat het ons weten. Dan rekenen we met een standaardwaarde en vermelden dat in de offerte.${sig}` }, () => {
@@ -785,13 +788,13 @@ const readFiles = async input => { const out = []; for (const f of Array.from((i
 async function readInboxMail(id) {
   const m = window.UFMail.get(id); if (!m) return;
   const text = /^van:/im.test(m.body) ? m.body : `Van: ${m.from} <${m.email}>\nOnderwerp: ${m.subject}\n\n${m.body}`;
-  toast('The agent is reading the mail…');
+  toast('Reading the e-mail…');
   const rd = await AG().read({ text, via: 'Mail' });
   if (rd.lane === 'reply') return handleReply(m);
-  if (rd.lane === 'notRelevant' || rd.lane === 'question') { run(() => { window.UFMail.setAgent(id, rd.lane === 'question' ? 'This is a question, not a request. I made nothing. Reply to it yourself.' : 'This is not a request, so I filed it and made nothing.', null, rd.lane === 'question' ? ['neutral', 'Question'] : ['neutral', 'Not relevant']); logA(`Read a mail from ${m.from}: ${rd.lane === 'question' ? 'a question' : 'not relevant'}`, 'agent'); return ['The agent read the mail. Nothing was made from it.']; }); return; }
+  if (rd.lane === 'notRelevant' || rd.lane === 'question') { run(() => { window.UFMail.setAgent(id, rd.lane === 'question' ? 'This is a question, not a request for a price. No request was created.' : 'This e-mail is not a request for a price. No request was created.', null, rd.lane === 'question' ? ['neutral', 'Question'] : ['neutral', 'Not relevant']); logA(`Read a mail from ${m.from}: ${rd.lane === 'question' ? 'a question' : 'not relevant'}`, 'agent'); return ['No request created: this is not a request for a price.']; }); return; }
   run(() => { const pid = newProject(rd, { via: 'Mail', text: m.body, mail: m.id, files: m.attach ? m.attach.split(/,\s*/).map(name => ({ name })) : [] }), n = rd.missing.length;
-    window.UFMail.setAgent(id, `I read this mail and made project ${pid}. ${n ? `${n} required detail${n > 1 ? 's are' : ' is'} missing.` : 'All required details were found.'} ${engineLine(rd)}`, ['#/request/' + pid, 'Open the request'], ['active', 'New request']);
-    return [`Project ${pid} made from the mail. Check what the agent read.`, `#/request/${pid}`]; });
+    window.UFMail.setAgent(id, `Request ${pid} created from this e-mail. ${n ? `${n} required detail${n > 1 ? 's are' : ' is'} missing.` : 'All required details were found.'} ${engineLine(rd)}`, ['#/request/' + pid, 'Open request ' + pid], ['active', 'Request created']);
+    return [`Request ${pid} created from the e-mail. Verify the extracted details.`, `#/request/${pid}`]; });
 }
 async function handleReply(m) {
   const mm = (m.subject + ' ' + m.body).match(/[OQ]\d{4}-\d{3}/), q = (mm && Qt(mm[0])) || Object.values(S.quotes).filter(x => x.client.email === m.email && x.status === 'Sent').sort((a, b) => (b.sent || '').localeCompare(a.sent || ''))[0];
@@ -828,7 +831,7 @@ async function testAgent() {
 }
 function agentTab() {
   const c = AG().cfg(), u = AG().usage(), logs = AG().log();
-  return `<p class="lead">${AG().live() ? `The agent uses the Google model <b>${esc(c.model)}</b>.` : 'The agent uses the example reader. It finds names, numbers and doors in a mail, but cannot read plans. Add your Google API key to switch on the real agent.'}</p>
+  return `<p class="lead">${AG().live() ? `The agent uses the Google model <b>${esc(c.model)}</b>.` : 'The agent is using the basic reader. It recognises names, dimensions and door counts in text, but cannot read drawings, photos or voice notes. Add a Google API key to use the full agent.'}</p>
     <dl class="rules">
       <div><dt>Google API key<span class="uf-second">From Google AI Studio. Kept in this browser only, never in the project files.</span></dt><dd><input class="field" id="agkey" type="password" autocomplete="off" placeholder="${c.key ? `Key saved, ends in ${esc(c.key.slice(-4))}. Paste a new one to replace it.` : 'Paste your key'}" aria-label="Google API key"></dd></div>
       <div><dt>Model<span class="uf-second">Any Gemini model your key can use.</span></dt><dd><input class="field" id="agmodel" value="${esc(c.model)}" aria-label="Model"></dd></div>
@@ -837,56 +840,121 @@ function agentTab() {
     <div class="agbtns">${btn('Save', 'primary', 'data-agsave')}${btn('Test the connection', 'secondary', 'data-agtest')}${c.key ? btn('Remove key', 'quiet', 'data-agforget') : ''}<span id="agout" role="status"></span></div>
     <p class="hint">Anyone who uses this browser can use the key. For a team the key belongs in a small server function, so no browser holds it. Mail text and plans are sent to Google when the key is on.</p>
     <h2 class="uf-section-title">What the agent may do</h2>
-    ${table([{ h: 'Level', v: r => `<b>${r[0]}</b>` }, { h: 'Meaning', v: r => esc(r[1]) }, { h: 'In this prototype', v: r => esc(r[2]) }], [['A  Automatic', 'The agent does it and logs it.', 'Sort and read mail, fill in the request, draft the calculation.'], ['C  A person approves', 'The agent prepares it, you approve.', 'Every quote, order confirmation, invoice, purchase order and mail.'], ['D  A person decides', 'The agent hands it over.', 'Items not in the catalogue, discounts, complaints.']])}
+    ${table([{ h: 'Level', v: r => `<b>${r[0]}</b>` }, { h: 'Meaning', v: r => esc(r[1]) }, { h: 'In this prototype', v: r => esc(r[2]) }], [['A  Automatic', 'The agent does it and logs it.', 'Read e-mail, WhatsApp, call notes and voice notes, extract the request, draft the calculation.'], ['C  A person approves', 'The agent prepares it, you approve.', 'Every quote, order confirmation, invoice, purchase order and mail.'], ['D  A person decides', 'The agent hands it over.', 'Items not in the catalogue, discounts, complaints.']])}
     <p class="hint">Level B (automatic with a short undo) is not switched on. Every mail waits for you.</p>
     <h2 class="uf-section-title">Last calls to Google</h2>
     ${logs.length ? table([{ h: 'Time', v: r => esc(r.t.slice(11, 16)) }, { h: 'Task', v: r => esc(r.task) }, { h: 'Sent', v: r => `${r.sent} characters${r.files ? `, ${r.files} file${r.files > 1 ? 's' : ''}` : ''}` }, { h: 'Result', v: r => r.ok ? `Done in ${(r.ms / 1000).toFixed(1)} s` : `<span class="uf-loss">${esc(r.err)}</span>` }], logs) : '<p class="lead">No calls yet.</p>'}`;
 }
-document.addEventListener('input', e => { if (e.target.id === 'nc') { const nw = $('#newcust'); if (nw) nw.hidden = !e.target.value.trim() || S.relations.some(r => r.name === e.target.value.trim()); } });
+
+/* ---------- voice notes and photos for a new request ---------- */
+const media = { items: [], rec: null };
+const toB64 = blob => new Promise(res => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => res(''); r.readAsDataURL(blob); });
+/* Google reads WAV, so the browser recording (WebM or Ogg) is converted to 16 kHz mono WAV. */
+async function toWav(blob) {
+  const AC = window.AudioContext || window.webkitAudioContext, ctx = new AC(), buf = await ctx.decodeAudioData(await blob.arrayBuffer()); ctx.close();
+  const rate = 16000, off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * rate)), rate), src = off.createBufferSource();
+  src.buffer = buf; src.connect(off.destination); src.start(); const d = (await off.startRendering()).getChannelData(0);
+  const v = new DataView(new ArrayBuffer(44 + d.length * 2)), w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  w(0, 'RIFF'); v.setUint32(4, 36 + d.length * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, d.length * 2, true);
+  for (let i = 0; i < d.length; i++) { const s = Math.max(-1, Math.min(1, d[i])); v.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+  return new Blob([v], { type: 'audio/wav' });
+}
+const mmss = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+function showMedia() { const ul = $('#nmedia'); if (ul) ul.innerHTML = media.items.map((m, i) => `<li class="chip">${I(m.kind === 'voice' ? 'mic' : 'camera')}<span>${esc(m.name)}</span><button type="button" class="linkbtn" data-mrm="${i}" aria-label="Remove ${esc(m.name)}">Remove</button></li>`).join(''); }
+async function toggleVoice(btn) {
+  if (media.rec) { media.rec.stop(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) { toast('This browser cannot record audio. Type the notes instead.'); return; }
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { toast('Microphone access is blocked. Allow the microphone for this site to record a voice note.'); return; }
+  const mr = new MediaRecorder(stream), chunks = [], t0 = Date.now(), notes = $('#nn2'), SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let sr = null;
+  if (SR && !AG().live()) { sr = new SR(); sr.lang = 'nl-NL'; sr.continuous = true; sr.interimResults = false;
+    sr.onresult = ev => { for (let i = ev.resultIndex; i < ev.results.length; i++) if (ev.results[i].isFinal && notes) notes.value = (notes.value.trim() ? notes.value.trim() + ' ' : '') + ev.results[i][0].transcript.trim(); };
+    try { sr.start(); } catch (x) { sr = null; } }
+  mr.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  const tick = setInterval(() => { const s = Math.round((Date.now() - t0) / 1000); btn.innerHTML = `${I('stop')}Stop recording ${mmss(s)}`; if (s >= 180) mr.stop(); }, 500);
+  mr.onstop = async () => {
+    clearInterval(tick); stream.getTracks().forEach(t => t.stop()); if (sr) { try { sr.stop(); } catch (x) {} }
+    media.rec = null; btn.classList.remove('is-rec'); btn.innerHTML = `${I('mic')}Record voice note`;
+    const dur = mmss(Math.round((Date.now() - t0) / 1000));
+    let blob = new Blob(chunks, { type: mr.mimeType || 'audio/webm' }); try { blob = await toWav(blob); } catch (x) {}
+    media.items.push({ name: `Voice note ${dur}`, type: blob.type, data: await toB64(blob), kind: 'voice' }); showMedia();
+    if (!AG().live()) toast(sr ? 'Voice note added. The browser typed what it heard into Notes. Check the text.' : 'Voice note added. Without a Google API key it is not transcribed, so type the main points as well.');
+  };
+  mr.start(); media.rec = mr; btn.classList.add('is-rec'); btn.innerHTML = `${I('stop')}Stop recording 0:00`;
+}
+async function addPhotos(input) {
+  for (const f of Array.from(input.files || [])) {
+    if (f.size > 7e6) { toast(`${f.name} is larger than 7 MB and was not added.`); continue; }
+    media.items.push({ name: f.name || 'Photo', type: f.type || 'image/jpeg', data: await toB64(f), kind: f.type === 'application/pdf' ? 'file' : 'photo' });
+  }
+  input.value = ''; showMedia();
+  if (!AG().live()) toast('Photo added. Photos are read only with a Google API key; without a key, type the main points in Notes.');
+}
+/* ---------- WhatsApp conversation → request ---------- */
+async function readWhatsApp(id) {
+  const W_ = window.UFWhatsApp, c = W_.get(id); if (!c) return;
+  if (c.agent) { location.hash = (c.link && c.link[0]) || '#/whatsapp/' + id; return; }
+  toast('Reading the conversation…');
+  const rd = await AG().read({ text: W_.text(id), via: 'WhatsApp' });
+  if (rd.lane !== 'request') { run(() => { W_.setAgent(id, rd.lane === 'question' ? 'This is a question, not a request for a price. No request was created. Reply in the conversation.' : 'This conversation is not a request for a price. No request was created.', null, ['neutral', rd.lane === 'question' ? 'Question' : 'Not relevant']); logA(`Read a WhatsApp conversation with ${c.name}: no request`, 'agent'); return ['No request created: this is not a request for a price.', '#/whatsapp/' + id]; }); return; }
+  run(() => { const pid = newProject(rd, { via: 'WhatsApp', text: W_.text(id), wa: id }), n = rd.missing.length;
+    W_.setAgent(id, `Request ${pid} created from this conversation. ${n ? `${n} required detail${n > 1 ? 's are' : ' is'} missing.` : 'All required details were found.'} ${engineLine(rd)}`, ['#/request/' + pid, 'Open request ' + pid], ['active', 'Request created']);
+    return [`Request ${pid} created from WhatsApp. Verify the extracted details.`, `#/request/${pid}`]; });
+}
+function whatsappHelp() {
+  modal('Connect WhatsApp Business', `<p>A live connection reads new messages on the company number automatically. It needs:</p>
+    <ol class="steps-list"><li>A Meta Business account with the WhatsApp Business Platform (Cloud API).</li><li>The company phone number registered on that platform.</li><li>A small server (webhook) that receives the messages and passes them to the portal. The portal is a static website today, so this is a separate service.</li></ol>
+    <p>Until then, import a conversation: in WhatsApp open the chat, then More, Export chat, Without media. Choose Import chat on the WhatsApp page.</p>`, 'Open WhatsApp', () => { closeLayers(); location.hash = '#/whatsapp'; });
+}
 
 /* ---------- "New …" buttons ---------- */
 const NEW = {
-  project(company) { const hand = !!company, custs = S.relations.filter(r => r.kind === 'Customer');
-    openDrawer('New request', `<div class="seg nrseg" role="tablist" aria-label="How did the request arrive?">
-        <button type="button" role="tab" data-nrtab="mail" aria-selected="${!hand}">Mail</button><button type="button" role="tab" data-nrtab="notes" aria-selected="false">Call or visit</button><button type="button" role="tab" data-nrtab="hand" aria-selected="${hand}">By hand</button></div>
-      <div data-nrpanel="mail" ${hand ? 'hidden' : ''}>
-        <div class="uf-field"><label for="nm">Mail from the sales person or the customer</label><textarea id="nm" class="field" rows="10" placeholder="Paste the mail here. Start with the From line if you have it."></textarea><span class="hint">Or forward the mail to requests@uniframe-portal.example. That address is not live in this prototype, but Inbox mail has a “Read with the agent” button.</span></div>
-        <div class="uf-field"><label for="nf">Plans and door schedule</label><input type="file" id="nf" multiple accept=".pdf,image/*"><span class="hint">The Google model reads these. The example reader cannot.</span></div></div>
-      <div data-nrpanel="notes" hidden>
-        <div class="uf-field"><label for="nv">It came in by</label><select class="field" id="nv"><option value="Phone">Phone call</option><option value="Visit">Visit or meeting</option><option value="WhatsApp">WhatsApp</option></select></div>
-        <div class="uf-field"><label for="nncust">Customer, if you know it</label><input class="field" id="nncust" list="custs" placeholder="Search or type a customer"></div>
-        <div class="uf-field"><label for="nn2">Your notes</label><textarea id="nn2" class="field" rows="7" placeholder="For example: Hoekstra called. Glass wall along the stand, 40 m, 3 m high, 8 doors. Start in February."></textarea></div>
-        <div class="uf-field"><label for="nf2">Photos or plans</label><input type="file" id="nf2" multiple accept=".pdf,image/*"></div></div>
-      <div data-nrpanel="hand" ${hand ? '' : 'hidden'}>
-        <div class="uf-field"><label for="nc">Customer</label><input class="field" id="nc" list="custs" value="${esc(company || '')}" placeholder="Search or type a new customer"><datalist id="custs">${custs.map(r => `<option value="${esc(r.name)}">`).join('')}</datalist></div>
-        <div id="newcust" hidden><div class="uf-field"><label for="ncc">Contact person</label><input class="field" id="ncc"></div><div class="uf-field"><label for="nce">E-mail</label><input class="field" id="nce" type="email"></div><p class="hint">New customer. The agent adds the company when you make the project.</p></div>
-        <div class="uf-field"><label for="nn">Project name</label><input class="field" id="nn" placeholder="For example: Office floor 3"></div>
-        <div class="uf-field"><label for="ns">Site address</label><input class="field" id="ns" placeholder="Street and city"></div>
-        <div class="uf-field"><label for="nt">What do they need?</label><textarea id="nt" class="field" rows="4" placeholder="For example: 30 m glass wall, 4 doors, delivery in March"></textarea><span class="hint">Everything you type is yours. You can let the agent read it afterwards.</span></div></div>
-      <p class="hint" id="nr-engine">${AG().live() ? `The Google model ${esc(AG().cfg().model)} reads this.` : 'No Google key yet, so the example reader is used. Add your key in Settings → Agent.'}</p>`,
-    `<button class="uf-pbtn uf-pbtn--primary" type="submit" id="nr-go">${hand ? 'Make project' : 'Let the agent read it'}</button>`, f => {
-      const tab = f.dataset.tab || 'mail';
-      if (tab === 'hand') {
-        const c = $('#nc', f).value.trim(), n = $('#nn', f).value.trim(); if (!c || !n) { toast('Fill in the customer and the project name.'); return false; }
-        run(() => { let r = S.relations.find(x => x.name === c), isNew = false;
-          if (!r) { const ct = $('#ncc', f).value.trim(); r = { name: c, kind: 'Customer', contact: ct || 'Contact', email: $('#nce', f).value.trim(), city: '–', toConfirm: !ct }; S.relations.push(r); isNew = true; }
-          const id = `P2611-${nextNum()}`;
-          S.projects.unshift({ id, name: n, customer: c, contact: r.contact, email: r.email, site: $('#ns', f).value.trim() || '–', created: TODAY, newCustomer: isNew, request: { via: 'By hand', date: TODAY, text: $('#nt', f).value.trim() || 'No details yet.' } });
-          logA(`Made project ${id} for ${c} by hand`); return [`Project ${id} made. Next: let the agent read the request, or make the calculation yourself.`, `#/request/${id}`]; });
-        return;
-      }
-      const text = ($(tab === 'mail' ? '#nm' : '#nn2', f).value || '').trim();
-      if (text.length < 15) { toast(tab === 'mail' ? 'Paste the mail first.' : 'Type some notes first.'); return false; }
-      const go = $('#nr-go', f); go.disabled = true; go.textContent = 'Reading…';
-      const via = tab === 'mail' ? 'Mail' : $('#nv', f).value, cust = tab === 'notes' ? $('#nncust', f).value.trim() : '';
-      readFiles($(tab === 'mail' ? '#nf' : '#nf2', f)).then(files => AG().read({ text: cust ? `Klant: ${cust}\n${text}` : text, files, via: via === 'Mail' ? 'Mail' : 'Phone' }).then(rd => {
+  project(company) { const custs = S.relations.filter(r => r.kind === 'Customer'), wa = window.UFWhatsApp ? window.UFWhatsApp.all() : [];
+    media.items = [];
+    openDrawer('New request', `<div class="seg nrseg" role="tablist" aria-label="Channel">
+        <button type="button" role="tab" data-nrtab="call" aria-selected="true">Call or visit</button><button type="button" role="tab" data-nrtab="wa" aria-selected="false">WhatsApp</button></div>
+      <div data-nrpanel="call">
+        <div class="uf-field"><label for="nv">Channel</label><select class="field" id="nv"><option value="Phone">Phone call</option><option value="Visit">Site visit</option><option value="Meeting">Meeting</option></select></div>
+        <div class="uf-field"><label for="ncust">Customer <span class="muted">(optional)</span></label><div class="inrow"><input class="field" id="ncust" list="custs" value="${esc(company || '')}" placeholder="Search customers" autocomplete="off"><button type="button" class="uf-pbtn uf-pbtn--secondary" data-newcusttoggle>New customer</button></div>
+          <datalist id="custs">${custs.map(r => `<option value="${esc(r.name)}">`).join('')}</datalist><span class="hint">If left empty, the agent takes the customer from the notes.</span></div>
+        <div id="newcust" class="subform" hidden>
+          <div class="uf-field"><label for="ncn">Company name</label><input class="field" id="ncn"></div>
+          <div class="uf-field"><label for="ncc">Contact person</label><input class="field" id="ncc"></div>
+          <div class="uf-field"><label for="nce">E-mail</label><input class="field" id="nce" type="email"></div>
+          <div class="uf-field"><label for="ncp">Phone</label><input class="field" id="ncp" type="tel"></div></div>
+        <div class="uf-field"><label for="nn2">Notes</label><textarea id="nn2" class="field" rows="6" placeholder="Customer, site address, wall length and height, number of doors, delivery date"></textarea></div>
+        <div class="capture"><button type="button" class="uf-pbtn uf-pbtn--secondary" data-voice>${I('mic')}Record voice note</button><label class="uf-pbtn uf-pbtn--secondary">${I('camera')}Add photo<input type="file" id="nphoto" accept="image/*,.pdf" capture="environment" multiple hidden></label></div>
+        <ul class="chips" id="nmedia"></ul>
+        <p class="hint">${AG().live() ? `A voice note or a photo of handwritten notes is enough. The Google model ${esc(AG().cfg().model)} transcribes and reads it.` : 'Without a Google API key, the browser types out voice notes as you speak, and photos cannot be read. Add a key in Settings → Agent for the full agent.'}</p></div>
+      <div data-nrpanel="wa" hidden>
+        <p class="hint">Select the conversation. The agent reads the messages, voice messages and photos, and creates the request.</p>
+        <div class="wapick">${wa.length ? wa.map((c, i) => `<label class="warow ${c.agent ? 'is-done' : ''}"><input type="radio" name="wa" value="${c.id}" ${!c.agent && !wa.slice(0, i).some(x => !x.agent) ? 'checked' : ''} ${c.agent ? 'disabled' : ''}><span><b>${esc(c.name)}${c.company ? `, ${esc(c.company)}` : ''}</b><span class="muted">${c.agent ? 'Request already created' : esc(c.phone || 'Imported chat')}</span></span></label>`).join('') : '<p class="lead">No conversations yet.</p>'}</div>
+        <a class="linkbtn" href="#/whatsapp">Open WhatsApp</a></div>`,
+    `<button class="uf-pbtn uf-pbtn--primary" type="submit" id="nr-go">Create request</button>`, f => {
+      if (media.rec) { toast('Stop the recording first.'); return false; }
+      const go = $('#nr-go', f);
+      if ((f.dataset.tab || 'call') === 'wa') { const pick = f.querySelector('input[name=wa]:checked'); if (!pick) { toast('Select a conversation.'); return false; } closeLayers(); readWhatsApp(pick.value); return; }
+      const text = ($('#nn2', f).value || '').trim(), via = $('#nv', f).value, files = media.items.slice();
+      if (!text && !files.length) { toast('Record a voice note, add a photo, or type the notes.'); return false; }
+      if (!text && !AG().live()) { toast('Without a Google API key the agent needs typed notes. Type the main points, or add a key in Settings → Agent.'); return false; }
+      let cust = $('#ncust', f).value.trim(), newRel = null;
+      if (!$('#newcust', f).hidden) { const n = $('#ncn', f).value.trim(); if (!n) { toast('Enter the company name of the new customer.'); return false; }
+        newRel = { name: n, kind: 'Customer', contact: $('#ncc', f).value.trim() || 'Contact', email: $('#nce', f).value.trim(), phone: $('#ncp', f).value.trim(), city: '–' }; cust = n; }
+      go.disabled = true; go.textContent = 'Reading…';
+      AG().read({ text: text || '(See the voice note and photos.)', files, via: 'Phone' }).then(rd => {
         if (!f.isConnected) return;
-        if (rd.lane === 'notRelevant' || rd.lane === 'question') { go.disabled = false; go.textContent = 'Let the agent read it'; toast(rd.lane === 'question' ? 'This reads as a question, not a request. Nothing was made. Switch to By hand if it is a request.' : 'This does not look like a request, so nothing was made.'); return; }
-        run(() => { const id = newProject(rd, { via, text, files }), n = rd.missing.length;
-          return [`Project ${id} made. ${engineLine(rd)} ${n ? `${n} required detail${n > 1 ? 's are' : ' is'} missing.` : 'All required details were found.'}`, `#/request/${id}`]; });
-      })).catch(e => { go.disabled = false; go.textContent = 'Let the agent read it'; toast('Could not read it: ' + e.message); });
+        if (rd.lane === 'notRelevant' || rd.lane === 'question') { go.disabled = false; go.textContent = 'Create request'; toast('This does not read as a request for a price, so nothing was created. Add the dimensions and the number of doors.'); return; }
+        run(() => {
+          if (newRel && !S.relations.some(r => r.name === newRel.name)) { S.relations.push(newRel); logA(`Added customer ${newRel.name}`); }
+          const rel = cust && S.relations.find(r => r.kind === 'Customer' && r.name.toLowerCase() === cust.toLowerCase());
+          if (rel) { rd.fields.customer = { value: rel.name, source: 'match', status: 'found' }; [['contact', rel.contact], ['email', rel.email], ['phone', rel.phone]].forEach(([k, v]) => { if (v && v !== 'Contact' && !rd.fields[k].value) rd.fields[k] = { value: v, source: 'match', status: 'found' }; }); }
+          else if (cust) rd.fields.customer = { value: cust, source: 'person', status: 'found' };
+          const id = newProject(rd, { via, text: text || files.map(x => x.name).join(', '), files }), n = rd.missing.length;
+          return [`Request ${id} created. ${n ? `${n} required detail${n > 1 ? 's are' : ' is'} missing.` : 'All required details were found.'}`, `#/request/${id}`]; });
+      }).catch(e => { go.disabled = false; go.textContent = 'Create request'; toast('The request could not be read: ' + e.message); });
       return false;
-    }); const form = $('#panel form'); form.dataset.tab = hand ? 'hand' : 'mail'; },
+    }); $('#panel form').dataset.tab = 'call'; },
   calc() { const ps = S.projects.filter(p => stage(p) === 1);
     if (!ps.length) { toast('Every project already has a calculation. Make a new request first.', () => NEW.project(), 'New request'); return; }
     openDrawer('New calculation', `<div class="uf-field"><label for="pp">For which request?</label><select class="field" id="pp">${ps.map(p => `<option value="${p.id}">${p.id} ${esc(p.customer)} · ${esc(p.name)}</option>`).join('')}</select></div>`, '<button class="uf-pbtn uf-pbtn--primary" type="submit">Make calculation</button>', f => { const v = $('#pp', f).value; setTimeout(() => DO.calc(v), 0); }); },
@@ -899,10 +967,20 @@ const NEW = {
   purchase(article) { const os = S.orders.filter(o => stage(P_(o.project)) === 4);
     if (!os.length) { toast('No orders in production need materials.'); return; }
     openDrawer('New purchase order', `<div class="uf-field"><label for="po">For which order?</label><select class="field" id="po">${os.map(o => `<option value="${o.id}">${o.id} ${esc(custOfOrder(o))}</option>`).join('')}</select></div>${article ? `<p class="hint">For article ${esc(article)}: pick the order it is for.</p>` : ''}`, '<button class="uf-pbtn uf-pbtn--primary" type="submit">Next</button>', f => { const v = $('#po', f).value; setTimeout(() => DO.materials(v), 0); }); },
-  company() { openDrawer('New company', `<div class="uf-field"><label for="cn">Name</label><input class="field" id="cn"></div><div class="uf-field"><label for="ck">Type</label><select class="field" id="ck"><option>Customer</option><option>Supplier</option></select></div>
-      <div class="uf-field"><label for="cc">Contact</label><input class="field" id="cc"></div><div class="uf-field"><label for="ce">E-mail</label><input class="field" id="ce" type="email"></div><div class="uf-field"><label for="ci">City</label><input class="field" id="ci"></div>`, null, f => {
-      const n = $('#cn', f).value.trim(); if (!n) { toast('Give the company a name.'); return false; }
-      run(() => { S.relations.push({ name: n, kind: $('#ck', f).value, contact: $('#cc', f).value.trim() || '–', email: $('#ce', f).value.trim(), city: $('#ci', f).value.trim() || '–' }); logA(`Added ${n}`); return [`${n} added.`, '#/relations']; }); }); },
+  company(kind) { const k0 = kind === 'Supplier' ? 'Supplier' : 'Customer';
+    openDrawer('New customer or supplier', `<div class="seg nrseg" role="tablist" aria-label="Type"><button type="button" role="tab" data-cktab="Customer" aria-selected="${k0 === 'Customer'}">Customer</button><button type="button" role="tab" data-cktab="Supplier" aria-selected="${k0 === 'Supplier'}">Supplier</button></div>
+      <div class="uf-field"><label for="cn">Company name</label><input class="field" id="cn"></div>
+      <div class="uf-field"><label for="cc">Contact person</label><input class="field" id="cc"></div>
+      <div class="uf-field"><label for="ce">E-mail</label><input class="field" id="ce" type="email"></div>
+      <div class="uf-field"><label for="cp">Phone</label><input class="field" id="cp" type="tel"></div>
+      <div class="uf-field"><label for="ci">City</label><input class="field" id="ci"></div>
+      <div class="uf-field" data-supplieronly ${k0 === 'Supplier' ? '' : 'hidden'}><label for="cs">Supplies</label><input class="field" id="cs" placeholder="For example: glass, profiles, doors"></div>`,
+    `<button class="uf-pbtn uf-pbtn--primary" type="submit" id="ck-go">Create ${k0.toLowerCase()}</button>`, f => {
+      const n = $('#cn', f).value.trim(), kd = f.dataset.kind || k0; if (!n) { toast('Enter the company name.'); return false; }
+      if (S.relations.some(r => r.name.toLowerCase() === n.toLowerCase())) { toast(`${n} already exists in Customers and suppliers.`); return false; }
+      run(() => { S.relations.push({ name: n, kind: kd, contact: $('#cc', f).value.trim() || '–', email: $('#ce', f).value.trim(), phone: $('#cp', f).value.trim(), city: $('#ci', f).value.trim() || '–', ...(kd === 'Supplier' ? { supplies: $('#cs', f).value.trim() } : {}) });
+        logA(`Added ${kd.toLowerCase()} ${n}`); return [`${kd} ${n} created.`, '#/relations']; }); });
+    $('#panel form').dataset.kind = k0; },
   article() { openDrawer('New article', `<div class="uf-field"><label for="ac">Code</label><input class="field" id="ac"></div><div class="uf-field"><label for="an">Name</label><input class="field" id="an"></div>
       <div class="uf-field"><label for="au">Unit</label><select class="field" id="au"><option>st</option><option>m1</option><option>set</option></select></div><div class="uf-field"><label for="ap">Cost</label><input class="field" id="ap" inputmode="decimal"></div>`, null, f => {
       const c = $('#ac', f).value.trim(), n = $('#an', f).value.trim(); if (!c || !n) { toast('Fill in code and name.'); return false; }
@@ -941,6 +1019,7 @@ function refreshQuote() {
 document.addEventListener('change', e => {
   const el = e.target, q = cq();
   if (el.id === 'gcid') { try { localStorage.setItem('uf-gmail-client', JSON.stringify(el.value.trim())); } catch (x) {} toast('Client ID saved. Press Connect Gmail to sign in with Google.'); return; }
+  if (el.id === 'nphoto') { addPhotos(el); return; }
   if (el.dataset.rf) { setField(P_(el.dataset.p), el.dataset.rf, el.value.trim()); state.keepScroll = true; route(); return; }
   if (!q || !el.closest('#qmain, #qrail')) return;
   if (el.id === 'upfile' && el.files[0]) { q.files.unshift({ name: el.files[0].name, from: 'You, just now' }); q.timeline.unshift([`Agent read ${el.files[0].name} you added`, now()]); save(); refreshQuote(); toast(`${el.files[0].name} added. The agent reads it with this quote.`); return; }
@@ -965,8 +1044,14 @@ document.addEventListener('click', e => {
   if (t.dataset.go) { closeLayers(); location.hash = t.dataset.go; return; }
   if (t.dataset.pick) { const [pid, key, value] = t.dataset.pick.split('|'), p = P_(pid); setField(p, key, value); logA(`Picked ${value} for ${key} on ${p.id}`); save(); state.keepScroll = true; route(); toast(`Using ${value}. The value is now set by you.`); return; }
   if (t.dataset.agentread) { readInboxMail(t.dataset.agentread); return; }
+  if (t.dataset.waread) { readWhatsApp(t.dataset.waread); return; }
+  if (t.matches('[data-voice]')) { toggleVoice(t); return; }
+  if (t.dataset.mrm != null) { media.items.splice(+t.dataset.mrm, 1); showMedia(); return; }
+  if (t.matches('[data-newcusttoggle]')) { const b = $('#newcust'); b.hidden = !b.hidden; t.textContent = b.hidden ? 'New customer' : 'Existing customer'; $('#ncust').disabled = !b.hidden; if (!b.hidden) $('#ncn').focus(); return; }
+  if (t.dataset.cktab) { const f = t.closest('form'); f.dataset.kind = t.dataset.cktab; f.querySelectorAll('[data-cktab]').forEach(b => b.setAttribute('aria-selected', b === t)); f.querySelector('[data-supplieronly]').hidden = t.dataset.cktab !== 'Supplier'; $('#ck-go', f).textContent = `Create ${t.dataset.cktab.toLowerCase()}`; return; }
+  if (t.matches('[data-wahelp]')) { whatsappHelp(); return; }
   if (t.dataset.nrtab) { const f = t.closest('form'); f.dataset.tab = t.dataset.nrtab; f.querySelectorAll('[data-nrtab]').forEach(b => b.setAttribute('aria-selected', b === t));
-    f.querySelectorAll('[data-nrpanel]').forEach(p => p.hidden = p.dataset.nrpanel !== t.dataset.nrtab); $('#nr-go', f).textContent = t.dataset.nrtab === 'hand' ? 'Make project' : 'Let the agent read it'; return; }
+    f.querySelectorAll('[data-nrpanel]').forEach(p => p.hidden = p.dataset.nrpanel !== t.dataset.nrtab); return; }
   if (t.matches('[data-agsave]')) { saveAgentCfg(); return; }
   if (t.matches('[data-agtest]')) { testAgent(); return; }
   if (t.matches('[data-agforget]')) { AG().setCfg({ key: '' }); toast('Key removed from this browser.'); state.keepScroll = true; route(); return; }
@@ -1083,7 +1168,7 @@ function openDrawer(title, body, foot, done) {
   form.onsubmit = e => { e.preventDefault(); if (typeof done === 'function') { if (done(form) === false) return; } else toast(done || 'Saved.'); if (d.querySelector('form') === form) closeLayers(); };
   const f = d.querySelector('.uf-panel__body input, .uf-panel__body textarea, .uf-panel__body select, .uf-panel__body button'); if (f) f.focus();
 }
-function closeLayers() { $('#modal').hidden = true; $('#panel').hidden = true; $('#scrim').hidden = true; }
+function closeLayers() { if (media.rec) media.rec.stop(); $('#modal').hidden = true; $('#panel').hidden = true; $('#scrim').hidden = true; }
 $('#scrim').onclick = closeLayers;
 window.UF = { toast, modal, openDrawer, nav: () => renderNav(SECTION_OF[(location.hash.split('/')[1] || 'today').split('?')[0]] || (location.hash.split('/')[1] || 'today').split('?')[0]), route };
 

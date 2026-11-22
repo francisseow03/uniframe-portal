@@ -107,9 +107,9 @@ window.UF_DATA = {
   relations: [
     { name: 'Wallsz', kind: 'Customer', contact: 'Paul Terlouw', email: 'paul.terlouw@wallsz.nl', city: 'Utrecht' },
     { name: 'De Graaf Interieurbouw', kind: 'Customer', contact: 'Marloes de Graaf', email: 'marloes@degraaf-interieur.nl', city: 'Utrecht' },
-    { name: 'Bentacera', kind: 'Customer', contact: 'Ruben Aalbers', email: 'r.aalbers@bentacera.nl', city: 'Zeist' },
+    { name: 'Bentacera', kind: 'Customer', contact: 'Ruben Aalbers', email: 'r.aalbers@bentacera.nl', phone: '+31 6 4182 7731', city: 'Zeist' },
     { name: 'Bouwbedrijf Hoekstra', kind: 'Customer', contact: 'Afdeling inkoop', email: 'inkoop@hoekstra-bouw.nl', city: 'Amersfoort' },
-    { name: 'Inter-Fact', kind: 'Customer', contact: 'Kees Vos', email: 'k.vos@inter-fact.nl', city: 'Utrecht' },
+    { name: 'Inter-Fact', kind: 'Customer', contact: 'Kees Vos', email: 'k.vos@inter-fact.nl', phone: '+31 6 1093 5528', city: 'Utrecht' },
     { name: 'Kantoorgroep Noord', kind: 'Customer', contact: 'Sanne Vermeer', email: 's.vermeer@kantoorgroepnoord.nl', city: 'Zwolle' },
     { name: 'Glas Centrum Nederland', kind: 'Supplier', contact: 'Planning', email: 'planning@glascentrum.nl', city: 'Nieuwegein' },
     { name: 'Metaalwerk Veenendaal', kind: 'Supplier', contact: 'Henk Bos', email: 'h.bos@metaalwerkveenendaal.nl', city: 'Veenendaal' },

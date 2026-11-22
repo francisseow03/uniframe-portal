@@ -87,7 +87,7 @@ function reader(m) {
       <div class="agent__actions">${m.link ? `<a class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" href="${m.link[0]}">${esc(m.link[1])}</a>` : ''}${m.draft ? `<button class="uf-pbtn uf-pbtn--secondary uf-pbtn--sm" data-m="usedraft" data-v="${m.id}">Use the agent's reply</button>` : ''}</div></section>` : ''}
     ${m.folder === 'sent' && m.mock ? '<p class="sentnote">Sent in example mode: saved here, not delivered. Connect Gmail in Settings to send for real.</p>' : ''}
     <div class="mread__body">${esc(m.body || m.snippet || '').replace(/\n/g, '<br>')}</div>${m.attach ? `<p class="attach">${I('upload')}${esc(m.attach)}</p>` : ''}
-    <div class="mread__actions">${m.folder === 'inbox' && !m.agent ? `<button class="uf-pbtn uf-pbtn--primary" data-agentread="${m.id}">${I('agent')}Read with the agent</button>` : ''}<button class="uf-pbtn uf-pbtn--secondary" data-m="reply" data-v="${m.id}">Reply</button><button class="uf-pbtn uf-pbtn--secondary" data-m="replyall" data-v="${m.id}">Reply all</button><button class="uf-pbtn uf-pbtn--quiet" data-m="forward" data-v="${m.id}">Forward</button></div>`;
+    <div class="mread__actions">${m.folder === 'inbox' && !m.agent ? `<button class="uf-pbtn uf-pbtn--primary" data-agentread="${m.id}">${I('agent')}Create request</button>` : ''}<button class="uf-pbtn uf-pbtn--secondary" data-m="reply" data-v="${m.id}">Reply</button><button class="uf-pbtn uf-pbtn--secondary" data-m="replyall" data-v="${m.id}">Reply all</button><button class="uf-pbtn uf-pbtn--quiet" data-m="forward" data-v="${m.id}">Forward</button></div>`;
 }
 function composer() {
   const c = M.compose;

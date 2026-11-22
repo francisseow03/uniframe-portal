@@ -348,3 +348,34 @@ ul.plain { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-d
 .agbtns { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0 8px; }
 .agbtns #agout { font-size: 14px; }
 .uf-pill--attention { background: rgb(180 120 30 / .15); }
+
+/* ---- New request: capture, WhatsApp ---- */
+.inrow { display: flex; gap: 8px; }
+.inrow .field { flex: 1; min-width: 0; }
+.subform { display: flex; flex-direction: column; gap: 12px; padding: 12px; border-radius: 12px; background: rgb(35 58 52 / .05); }
+.capture { display: flex; gap: 8px; flex-wrap: wrap; }
+.capture .is-rec { color: var(--uf-platform-status-loss-text); }
+.chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 10px; border-radius: 16px; background: rgb(35 58 52 / .08); font-size: 13px; }
+.chip .uf-ico { width: 16px; height: 16px; }
+.warow { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; background: rgb(255 255 255 / .6); cursor: pointer; margin-bottom: 8px; }
+.warow > span { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.warow.is-done { opacity: .6; cursor: default; }
+.wa-thread { display: flex; flex-direction: column; gap: 10px; padding: 8px 0 16px; }
+.wa-msg { display: flex; flex-direction: column; max-width: 78%; }
+.wa-msg--them { align-self: flex-start; }
+.wa-msg--us { align-self: flex-end; align-items: flex-end; }
+.wa-bub { padding: 10px 12px; border-radius: 12px; background: #fff; font-size: 14px; line-height: 1.45; display: flex; flex-direction: column; gap: 6px; }
+.wa-msg--us .wa-bub { background: rgb(47 93 80 / .14); }
+.wa-msg time { font-size: 12px; color: var(--uf-platform-text-secondary); margin-top: 4px; }
+.wa-voice, .wa-photo { display: inline-flex; align-items: center; gap: 6px; }
+.wa-voice .uf-ico, .wa-photo .uf-ico { width: 18px; height: 18px; }
+.wa-tr { color: var(--uf-platform-text-secondary); font-size: 13px; }
+.wa-reply { display: flex; gap: 8px; margin-top: 8px; }
+.wa-reply .field { flex: 1; }
+.mail.wa { grid-template-columns: 340px minmax(0, 1fr); }
+.wa .mrow { display: flex; flex-direction: column; gap: 4px; text-decoration: none; color: inherit; }
+@media (max-width: 1100px) { .mail.wa { grid-template-columns: 1fr; } }
+.subform[hidden], [data-nrpanel][hidden], [data-supplieronly][hidden] { display: none; }
+[data-nrpanel] { display: flex; flex-direction: column; gap: 16px; }
+[data-nrpanel][hidden] { display: none; }

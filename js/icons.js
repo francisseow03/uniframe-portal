@@ -21,6 +21,10 @@ window.UF_ICONS = {
   swap:      'M3 6H16V2L22 8L16 14V10H3ZM21 14H8V10L2 16L8 22V18H21Z',
   close:     'M5 2L12 9L19 2L22 5L15 12L22 19L19 22L12 15L5 22L2 19L9 12L2 5Z',
   send:      'M2 3L22 12L2 21V14L14 12L2 10Z',
+  chat:      'M3 3H21V13A6 6 0 0 1 15 19H8L3 23ZM7 7V14L8 15H15A2 2 0 0 0 17 13V7ZM9 10H15V12H9Z',
+  mic:       'M9 2H15V12A3 3 0 0 1 9 12ZM5 10H8V12A4 4 0 0 0 16 12V10H19V12A7 7 0 0 1 13.5 18.8V22H10.5V18.8A7 7 0 0 1 5 12Z',
+  camera:    'M3 6H8L10 3H14L16 6H21V15A6 6 0 0 1 15 21H3ZM12 8A5 5 0 1 0 12 18A5 5 0 1 0 12 8ZM12 11A2 2 0 1 1 12 15A2 2 0 1 1 12 11Z',
+  stop:      'M5 5H19V13A6 6 0 0 1 13 19H5Z',
 };
 window.ufIcon = (name, cls = '') =>
   `<svg class="uf-ico ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="${window.UF_ICONS[name] || ''}"/></svg>`;
