@@ -1,0 +1,152 @@
+/* Uniframe product UI (portal), light theme, v2.0 Daylight (20 Nov 2026).
+   Needs uniframe-tokens.css. Fonts: Inter 400/500/600, Barlow Condensed 700 (page titles only).
+   Glass (22 Nov 2026): sidebar, current nav item, buttons, top bar, stepper, segmented controls, agent panel.
+   Rules: one primary button per view. Green means profit, red means loss. Numbers tabular and right aligned.
+   Create in a 480 px drawer from the right, edit in place, use modals only for decisions. */
+
+.uf-app { display: grid; grid-template-columns: var(--uf-size-platform-sidebar-open) 1fr; min-height: 100vh;
+  background: var(--uf-platform-page); color: var(--uf-platform-text);
+  font: var(--uf-type-platform-body-weight) var(--uf-type-platform-body-size)/var(--uf-type-platform-body-line) var(--uf-type-family-text); }
+.uf-app--rail { grid-template-columns: var(--uf-size-platform-sidebar-rail) 1fr; }
+.uf-num, .uf-table td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+/* Sidebar: deep-green glass panel, 22 Nov 2026. It floats 12 px from the edge over the backdrop photo,
+   so the frost has something to show. The current page is a clear glass lens. No glow. */
+.uf-sidebar { position: sticky; top: 12px; height: calc(100vh - 24px); margin: 12px 0 12px 12px; overflow: auto; isolation: isolate;
+  display: flex; flex-direction: column; gap: 2px; padding: 16px 10px 10px; border-radius: 16px;
+  background: color-mix(in srgb, var(--uf-prim-green-900) 80%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgb(255 255 255 / 0.14); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.16), 0 12px 32px rgb(35 58 52 / 0.18);
+  color: var(--uf-platform-sidebar-text); scrollbar-width: none; }
+.uf-sidebar__logo { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 10px; margin-bottom: 8px; font-weight: 600; font-size: 14px; line-height: 1.1; color: #fff; text-decoration: none; }
+.uf-sidebar__group { margin: 12px 10px 4px; font: 600 12px/1.2 var(--uf-type-family-text); letter-spacing: 0.02em; color: var(--uf-platform-sidebar-text-secondary); }
+.uf-navgroup { display: flex; flex-direction: column; gap: 2px; }
+.uf-navgroup + .uf-navgroup { margin-top: 6px; padding-top: 4px; border-top: 1px solid rgb(255 255 255 / 0.10); }
+.uf-navgroup--end { margin-top: auto !important; }
+.uf-nav { position: relative; display: flex; align-items: center; gap: 12px; height: 38px; padding: 0 10px; border-radius: 10px; border: 1px solid transparent;
+  color: var(--uf-platform-sidebar-text); text-decoration: none; font-weight: 500; font-size: 14px; }
+.uf-nav span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uf-nav:hover { background: rgb(255 255 255 / 0.07); }
+.uf-nav[aria-current="page"] { color: #fff; font-weight: 600;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.24), rgb(255 255 255 / 0.10));
+  border-color: rgb(255 255 255 / 0.30); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45), inset 0 -1px 0 rgb(0 0 0 / 0.10), 0 2px 8px rgb(0 0 0 / 0.12);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.uf-nav__count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 600;
+  background: rgb(255 255 255 / 0.16); color: #fff; }
+.uf-nav .uf-ico { width: 20px; height: 20px; flex: none; fill: currentColor; }
+.uf-ico { width: 18px; height: 18px; fill: currentColor; flex: none; }
+
+/* Top bar: frosted glass over the scrolling page */
+.uf-topbar { position: sticky; top: 0; z-index: 5; height: var(--uf-size-platform-topbar); display: flex; align-items: center; gap: 12px; padding: 0 32px;
+  background: var(--uf-platform-topbar); -webkit-backdrop-filter: blur(20px) saturate(160%); backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--uf-platform-line); }
+.uf-main { padding: 20px 32px 24px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* Page header */
+.uf-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+.uf-page-title { margin: 0; font: 700 var(--uf-type-platform-page-title-size)/1 var(--uf-type-family-display); text-transform: uppercase; }
+.uf-section-title { margin: 0; font-size: 18px; font-weight: 600; line-height: 1.3; letter-spacing: -0.005em; }
+.uf-second { font-size: 13px; line-height: 1.4; color: var(--uf-platform-text-secondary); }
+
+/* Buttons */
+.uf-pbtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--uf-size-platform-button-md); padding: 0 18px;
+  border: 1px solid transparent; border-radius: var(--uf-radius-button); font: 600 14px/1 var(--uf-type-family-text); cursor: pointer; white-space: nowrap;
+  transition: background-color 120ms var(--uf-motion-easing), transform 180ms var(--uf-motion-easing-spring); }
+.uf-pbtn svg { width: 16px; height: 16px; fill: currentColor; }
+/* Buttons are glass: green glass for primary, frosted white glass for secondary. Highlights are inner edges, never glows. */
+.uf-pbtn--primary { color: var(--uf-platform-button-primary-label); border-color: rgb(255 255 255 / 0.18); text-decoration: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--uf-prim-green-700) 86%, #fff), var(--uf-prim-green-700) 55%, var(--uf-prim-green-800));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -1px 0 rgb(0 0 0 / 0.12), 0 1px 2px rgb(35 58 52 / 0.20); }
+.uf-pbtn--primary:hover { background: linear-gradient(180deg, var(--uf-prim-green-700), var(--uf-prim-green-800)); }
+.uf-pbtn--secondary { color: var(--uf-platform-button-secondary-label); background: rgb(255 255 255 / 0.62); border-color: rgb(255 255 255 / 0.9); text-decoration: none;
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 1px rgb(35 58 52 / 0.12), 0 1px 3px rgb(35 58 52 / 0.08);
+  -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); }
+.uf-pbtn--secondary:hover { background: rgb(255 255 255 / 0.88); }
+.uf-pbtn--quiet { background: transparent; color: var(--uf-platform-button-quiet-label); padding: 0 12px; }
+.uf-pbtn--quiet:hover { background: rgb(35 58 52 / 0.06); }
+.uf-pbtn--danger { background: var(--uf-platform-button-danger-fill); color: #fff; }
+.uf-pbtn--sm { height: var(--uf-size-platform-button-sm); padding: 0 12px; font-size: 13px; }
+.uf-pbtn--lg { height: var(--uf-size-platform-button-lg); padding: 0 22px; font-size: 15px; }
+.uf-pbtn--icon { width: var(--uf-size-platform-button-md); padding: 0; }
+.uf-pbtn:active { transform: scale(0.98); }
+.uf-pbtn:focus-visible, .uf-field input:focus-visible, .uf-field select:focus-visible, .uf-nav:focus-visible {
+  outline: 3px solid var(--uf-color-accent-focus); outline-offset: 2px; }
+.uf-pbtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Fields */
+.uf-field { display: flex; flex-direction: column; gap: 6px; }
+.uf-field label { font-size: 13px; font-weight: 500; }
+.uf-field input, .uf-field select, .uf-field textarea { height: var(--uf-size-platform-field); padding: 0 12px; border: 1px solid var(--uf-platform-field-border);
+  border-radius: var(--uf-radius-field); background: #fff; color: var(--uf-platform-text); font: 400 14px/1.45 var(--uf-type-family-text); }
+.uf-field .hint { font-size: 13px; color: var(--uf-platform-text-secondary); }
+.uf-field--error input { border-color: var(--uf-platform-status-loss-text); border-width: 2px; }
+.uf-field--error .hint { color: var(--uf-platform-status-loss-text); }
+
+/* Cards, tiles, tables */
+.uf-card { background: var(--uf-platform-card); border: 1px solid var(--uf-platform-line); border-radius: var(--uf-radius-card); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.uf-tile { background: var(--uf-platform-card-soft); border-radius: var(--uf-radius-field); padding: 12px 16px; }
+.uf-tile b { display: block; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.uf-table { width: 100%; border-collapse: collapse; background: var(--uf-platform-card); border: 1px solid var(--uf-platform-line); border-radius: var(--uf-radius-card); overflow: hidden; }
+.uf-table th { height: var(--uf-size-platform-table-head); padding: 0 12px; text-align: left; font-size: 13px; font-weight: 600; color: var(--uf-platform-text-secondary);
+  background: var(--uf-platform-card-soft); border-bottom: 1px solid var(--uf-platform-line); }
+.uf-table th.num { text-align: right; }
+.uf-table td { height: var(--uf-size-platform-row); padding: 4px 12px; line-height: 1.35; border-bottom: 1px solid var(--uf-platform-line); vertical-align: middle; }
+.uf-table tr:has(.uf-second) td { height: 61px; }
+.uf-table tr:last-child td { border-bottom: 0; }
+.uf-table tbody tr:hover { background: var(--uf-platform-card-soft); cursor: pointer; }
+.uf-table a { color: var(--uf-platform-link); font-weight: 600; text-decoration: none; }
+.uf-table a:hover { text-decoration: underline; }
+
+/* Status badges: soft tint, always a word */
+.uf-pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--uf-radius-pill); font-size: 13px; font-weight: 500; white-space: nowrap; }
+.uf-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.uf-pill--profit { color: var(--uf-platform-status-profit-text); background: var(--uf-platform-status-profit-bg); }
+.uf-pill--loss { color: var(--uf-platform-status-loss-text); background: var(--uf-platform-status-loss-bg); }
+.uf-pill--attention { color: var(--uf-platform-status-attention-text); background: var(--uf-platform-status-attention-bg); }
+.uf-pill--neutral { color: var(--uf-platform-status-neutral-text); background: var(--uf-platform-status-neutral-bg); }
+.uf-pill--active { color: var(--uf-platform-status-active-text); background: var(--uf-platform-status-active-bg); }
+.uf-profit { color: var(--uf-platform-status-profit-text); } .uf-loss { color: var(--uf-platform-status-loss-text); }
+
+/* Journey stepper: glass capsule (option B, 21 Nov 2026). A frosted capsule holds the green liquid up to the
+   current step; the current step is a glass lens. No icons or numbers. Put it on the stone page, not on a white card.
+   Set the number of steps and the current step (1-based): <ol class="uf-steps" style="--n: 8; --cur: 4">. */
+.uf-steps { --n: 8; --cur: 1; --track: 60px;
+  position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  list-style: none; margin: 0; padding: calc(var(--track) + 8px) 0 0; min-width: calc(var(--n) * 88px); }
+.uf-steps::before { /* glass capsule */
+  content: ""; position: absolute; inset: 12px 0 auto 0; height: 36px; box-sizing: border-box; border-radius: 18px;
+  background: rgb(255 255 255 / 0.55); border: 1.5px solid rgb(255 255 255 / 0.7);
+  box-shadow: inset 0 1px 3px rgb(35 58 52 / 0.10); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.uf-steps::after { /* liquid: from the start to the centre of the current step */
+  content: ""; position: absolute; top: 16px; left: 4px; height: 28px; border-radius: 14px;
+  width: max(28px, calc((var(--cur) - 0.5) * 100% / var(--n) - 4px));
+  background: linear-gradient(90deg, var(--uf-prim-green-700), var(--uf-prim-green-900)); }
+.uf-steps li { position: relative; z-index: 1; text-align: center; font-size: 14px; line-height: 20px; color: var(--uf-platform-text-secondary); }
+.uf-steps li::before { /* notch */
+  content: ""; position: absolute; left: 50%; top: calc(var(--track) / 2 - var(--track) - 8px - 4px); width: 8px; height: 8px; margin-left: -4px;
+  border-radius: 50%; background: var(--uf-color-surface-mist); }
+.uf-steps li.done::before { background: rgb(255 255 255 / 0.7); }
+.uf-steps li[aria-current="step"]::before { /* glass lens */
+  top: calc(var(--track) / 2 - var(--track) - 8px - 24px); width: 48px; height: 48px; margin-left: -24px; box-sizing: border-box;
+  background: rgb(255 255 255 / 0.72); border: 1.5px solid #fff;
+  box-shadow: inset 0 1px 2px rgb(255 255 255 / 0.9), 0 2px 6px rgb(35 58 52 / 0.18);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.uf-steps li.done, .uf-steps li[aria-current="step"] { color: var(--uf-platform-text); }
+.uf-steps li[aria-current="step"] { font-weight: 600; }
+
+/* Drawer (create), toast */
+.uf-panel { position: fixed; inset: 0 0 0 auto; width: var(--uf-size-platform-panel); background: var(--uf-platform-card); color: var(--uf-platform-text);
+  font: var(--uf-type-platform-body-weight) var(--uf-type-platform-body-size)/var(--uf-type-platform-body-line) var(--uf-type-family-text); box-shadow: -24px 0 60px rgb(35 58 52 / 0.16);
+  display: flex; flex-direction: column; animation: uf-slide 300ms var(--uf-motion-easing); }
+.uf-panel__head, .uf-panel__foot { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.uf-panel__foot { margin-top: auto; border-top: 1px solid var(--uf-platform-line); justify-content: flex-end; }
+.uf-panel__body { padding: 0 24px 24px; display: flex; flex-direction: column; gap: 16px; overflow: auto; }
+.uf-panel[hidden] { display: none; }
+@keyframes uf-slide { from { transform: translateX(100%); } }
+.uf-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; padding: 12px 12px 12px 20px;
+  border-radius: var(--uf-radius-panel); background: var(--uf-color-surface-deep-green); color: var(--uf-color-text-on-dark); box-shadow: var(--uf-glass-shadow); }
+
+@media (prefers-reduced-motion: reduce) { .uf-panel { animation: none; } .uf-pbtn { transition: none; } }
+@media (prefers-reduced-transparency: reduce) { .uf-topbar { background: var(--uf-platform-page); backdrop-filter: none; }
+  .uf-sidebar { background: var(--uf-platform-sidebar); backdrop-filter: none; } .uf-pbtn--secondary { background: #fff; backdrop-filter: none; }
+  .uf-steps::before, .uf-steps li[aria-current="step"]::before { background: var(--uf-platform-card); backdrop-filter: none; border-color: var(--uf-platform-line); } }

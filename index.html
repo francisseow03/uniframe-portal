@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uniframe portal</title>
+<meta name="description" content="Uniframe Systems AI agent portal, clickable prototype with example data.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%23233A34' d='M0 0H36V18H18V82H68A14 14 0 0 0 82 68V18H64V0H100V68A32 32 0 0 1 68 100H0Z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Barlow+Condensed:wght@500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/uniframe-tokens.css">
+<link rel="stylesheet" href="css/uniframe-portal.css">
+<link rel="stylesheet" href="css/site.css">
+</head>
+<body>
+<div class="backdrop" aria-hidden="true"></div>
+<div class="uf-app">
+  <nav class="uf-sidebar" aria-label="Main">
+    <a class="uf-sidebar__logo" href="#/today">
+      <svg width="28" height="28" viewBox="0 0 100 100" aria-hidden="true"><path fill="#D3DEDB" d="M0 0H36V18H18V82H68A14 14 0 0 0 82 68V18H64V0H100V68A32 32 0 0 1 68 100H0Z"/></svg>
+      <span>Uniframe<br>Systems</span>
+    </a>
+    <div id="nav" style="display:contents"></div>
+  </nav>
+  <div class="shell">
+    <header class="uf-topbar">
+      <form class="search" id="search" role="search">
+        <svg class="uf-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill-rule="evenodd" d="M3 3H21V12A6 6 0 0 1 15 18H10L5 22V18H3ZM7 7V14H15A2 2 0 0 0 17 12V7Z"/></svg>
+        <label class="sr" for="q">Search or ask the portal</label>
+        <input id="q" name="q" placeholder="Search or ask: “open quotes for Wallsz”" autocomplete="off">
+      </form>
+      <span style="flex:1"></span>
+      <div class="who"><span>Arjan Laninga</span><b aria-hidden="true">AL</b></div>
+    </header>
+    <main class="uf-main" id="view" tabindex="-1"></main>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="uf-panel" id="panel" hidden aria-labelledby="pt" role="dialog">
+  <form>
+    <div class="uf-panel__head"><h2 class="uf-section-title" id="pt">New request</h2><button class="uf-pbtn uf-pbtn--quiet uf-pbtn--icon" type="button" data-close aria-label="Close"><svg class="uf-ico" viewBox="0 0 24 24"><path d="M5 2L12 9L19 2L22 5L15 12L22 19L19 22L12 15L5 22L2 19L9 12L2 5Z"/></svg></button></div>
+    <div class="uf-panel__body">
+      <div class="uf-field"><label for="p1">Customer</label><input id="p1" placeholder="Search or add a customer"></div>
+      <div class="uf-field"><label for="p2">What do they need?</label><textarea id="p2" class="field" rows="4" placeholder="For example: 40 m glass partition, 9 doors, delivery week 6"></textarea><span class="hint">Type it yourself or paste a mail. The agent fills in the rest and shows you before anything is sent.</span></div>
+      <div class="uf-field"><label for="p3">Files</label><input id="p3" type="file"></div>
+    </div>
+    <div class="uf-panel__foot"><button class="uf-pbtn uf-pbtn--quiet" type="button" data-close>Cancel</button><button class="uf-pbtn uf-pbtn--primary" type="submit">Save</button></div>
+  </form>
+</aside>
+<div id="modal" hidden></div>
+<div class="uf-toast" id="toast" role="status" hidden></div>
+
+<script src="js/icons.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
