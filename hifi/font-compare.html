@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Font compare · real Uniframe content</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Sans:wght@400;600&family=Source+Sans+3:wght@400;600&family=Figtree:wght@400;600&family=Barlow+Condensed:wght@700&family=Barlow:wght@400;600&display=swap">
+<style>
+body { margin: 0; padding: 24px 32px; font: 13px/18px Inter, sans-serif; color: #1a1a1a; }
+table { border-collapse: collapse; width: 100%; }
+td, th { border-bottom: 1px solid #dcdcdc; padding: 10px 12px; text-align: left; vertical-align: top; }
+th { background: #f3f3f3; font-weight: 500; color: #5f5f5f; }
+.s14 { font-size: 14px; line-height: 20px; }
+.s13 { font-size: 13px; line-height: 18px; color: #5f5f5f; }
+.big { font-size: 28px; line-height: 34px; }
+.name { font-weight: 600; white-space: nowrap; }
+</style></head><body>
+<h1 style="font:700 32px/32px 'Barlow Condensed';text-transform:uppercase;margin:0 0 4px">Font compare</h1>
+<p style="margin:0 0 16px;color:#5f5f5f">Same content, same size (14 px body, 13 px supporting). Real Uniframe strings.</p>
+<table id="t"><thead><tr><th>Font</th><th>Codes · I l 1 · O 0</th><th>A list row at 14 px + supporting 13 px</th><th>Table numbers (tabular)</th></tr></thead><tbody></tbody></table>
+<script>
+const FONTS = [
+  ['Inter (default)', 'Inter', ''],
+  ['Inter + ss02 (disambiguation)', 'Inter', '"ss02","tnum"'],
+  ['IBM Plex Sans', '"IBM Plex Sans"', ''],
+  ['Source Sans 3', '"Source Sans 3"', ''],
+  ['Figtree', 'Figtree', ''],
+  ['Barlow (regular width)', 'Barlow', ''],
+  ['System UI (what the hi-fi shows now)', 'system-ui, -apple-system, "Segoe UI"', ''],
+];
+const tb = document.querySelector('#t tbody');
+FONTS.forEach(([n, f, feat]) => {
+  const st = `font-family:${f};${feat ? `font-feature-settings:${feat};` : 'font-variant-numeric:tabular-nums;'}`;
+  tb.insertAdjacentHTML('beforeend', `<tr data-font='${f}' data-feat='${feat}'><td class="name">${n}<br><span class="s13 m"></span></td>
+  <td style="${st}"><span class="big">Il1 O0 I2611-001-1</span><br><span class="s14">I2611-002-1 · lI1 · F2610-004 · O2611-009</span></td>
+  <td style="${st}"><div class="s14">De Graaf · new request: 12 m glass wall, 4 or 5 doors? · één geïntegreerde deur</div><div class="s13">waiting 2 d · Quote O2611-009 R2 · Paul Terlouw</div></td>
+  <td style="${st}" class="s14"><div style="text-align:right">€ 32,441.83</div><div style="text-align:right">€ 1,180.96</div><div style="text-align:right">€ 7,295.44</div></td></tr>`);
+});
+window.__metrics = async () => {
+  await document.fonts.ready;
+  const c = document.createElement('canvas').getContext('2d'), out = [];
+  for (const tr of document.querySelectorAll('tr[data-font]')) {
+    const f = tr.dataset.font; c.font = `400 14px ${f}`;
+    const x = c.measureText('x').actualBoundingBoxAscent, H = c.measureText('H').actualBoundingBoxAscent;
+    const w = c.measureText('De Graaf · new request: 12 m glass wall, 4 or 5 doors?').width;
+    // are I and l the same shape? compare rendered pixels
+    const px = ch => { const cv = document.createElement('canvas'); cv.width = 40; cv.height = 40; const g = cv.getContext('2d'); g.font = `400 32px ${f}`; g.fillText(ch, 10, 32); return g.getImageData(0, 0, 40, 40).data.join(''); };
+    const same = px('I') === px('l');
+    tr.querySelector('.m').textContent = `x-height ${x.toFixed(1)} px · cap ${H.toFixed(1)} · x/cap ${(x / H).toFixed(2)} · row width ${Math.round(w)} px · I=l ${same ? 'SAME' : 'different'}`;
+    out.push({ font: tr.querySelector('.name').firstChild.textContent, x: +x.toFixed(2), cap: +H.toFixed(2), ratio: +(x / H).toFixed(2), width: Math.round(w), IlSame: same });
+  }
+  return out;
+};
+</script></body></html>

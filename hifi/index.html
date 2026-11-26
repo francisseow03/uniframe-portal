@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Uniframe hi-fi wireframe (greyscale)</title>
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&display=swap">
+<meta name="robots" content="noindex">
+<style>
+/* Calm round (26 Nov, audit fixes): 4 text styles inside the page
+   (title 26 bold, text 14, text 14 bold, meta 13 grey), one dark thing per page (the main button),
+   only the decision has a border, grey text at least 4.5 : 1 on the grey rail. */
+:root { --ink:#1a1a1a; --ink2:#3d3d3d; --mute:#5f5f5f; --line:#dcdcdc; --soft:#f3f3f3; --side:#ececec; --white:#fff; --dark:#1a1a1a; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Inter, Arial, sans-serif; color: var(--ink); background: var(--white); }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+.app { display: grid; grid-template-columns: 224px 1fr; height: 100vh; }
+.side { background: var(--side); padding: 20px 12px; display: flex; flex-direction: column; gap: 2px; }
+.logo { font-weight: 700; letter-spacing: .02em; padding: 4px 12px 18px; font-size: 15px; }
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-size: 14px; }
+.nav[aria-current] { background: var(--white); font-weight: 700; }
+.nav b { font-size: 13px; min-width: 20px; text-align: center; border: 1px solid var(--ink2); border-radius: 10px; padding: 0 6px; }
+.shell { display: grid; grid-template-rows: 72px minmax(0, 1fr); min-width: 0; height: 100vh; overflow: hidden; }
+.top { display: flex; align-items: center; gap: 16px; padding: 0 16px 0 24px; }
+.search { width: 480px; height: 40px; border-radius: 20px; background: var(--soft); border: 0; padding: 0 18px; }
+.search::placeholder { color: var(--mute); }
+.keys { font-size: 13px; color: var(--mute); display: flex; gap: 16px; }
+.who { margin-left: auto; height: 40px; min-width: 76px; border-radius: 20px; background: var(--soft); display: grid; place-items: center; font-weight: 700; }
+.page { display: grid; grid-template-columns: minmax(0,1fr) 352px; gap: 16px; padding: 0 16px 16px 24px; min-height: 0; }
+.work { overflow: auto; min-width: 0; padding-bottom: 24px; }
+h1 { font-size: 26px; line-height: 1.2; margin: 4px 0 4px; }
+.sub { color: var(--ink); margin: 0 0 18px; font-size: 14px; }
+.lab { font-size: 14px; font-weight: 700; margin: 20px 0 8px; }
+.rows { border-top: 1px solid var(--line); }
+.row { display: flex; gap: 12px; align-items: center; padding: 0 16px; min-height: 56px; border-bottom: 1px solid var(--line); cursor: pointer; text-decoration: none; }
+.row:hover { background: #fafafa; }
+.row[aria-selected=true] { background: var(--soft); box-shadow: inset 4px 0 0 var(--dark); font-weight: 700; }
+.row > span:first-child { flex: 1; min-width: 0; }
+.row .meta { margin-left: auto; color: var(--mute); font-weight: 400; white-space: nowrap; font-size: 13px; }
+.row.warn { border-left: 3px dashed var(--ink); }
+.tag { font-size: 13px; border: 1px solid var(--line); border-radius: 10px; padding: 0 8px; white-space: nowrap; font-weight: 400; color: var(--ink2); }
+.tag.urgent { border: 1px solid var(--ink); color: var(--ink); font-weight: 700; }
+.banner { background: var(--soft); border-radius: 10px; padding: 14px 16px; font-weight: 700; }
+.split { display: grid; grid-template-columns: 320px minmax(0,1fr); gap: 16px; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--white); }
+.mail h2 { font-size: 14px; margin: 0 0 2px; }
+.mail pre { white-space: pre-wrap; font: inherit; margin: 16px 0; }
+.chip { display: inline-block; border: 1px solid var(--line); border-radius: 15px; padding: 2px 12px; margin: 0 6px 6px 0; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 13px; color: var(--mute); font-weight: 400; padding: 10px 8px; background: var(--soft); }
+td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+td small, .row small { font-size: 13px; color: var(--mute); font-weight: 400; }
+tr.missing td { border-bottom: 2px dashed var(--ink); font-weight: 700; }
+tr.own td { color: var(--mute); }
+.stepper { display: grid; grid-template-columns: repeat(8, 1fr); margin: 6px 0 18px; position: relative; }
+.stepper::before { content: ""; position: absolute; left: 6.25%; right: 6.25%; top: 9px; height: 2px; background: var(--line); }
+.step { text-align: center; font-size: 13px; color: var(--mute); position: relative; text-decoration: none; }
+.step i { display: block; width: 20px; height: 20px; border-radius: 50%; margin: 0 auto 6px; border: 2px solid var(--line); background: var(--white); }
+.step.done i { background: #9a9a9a; border-color: #9a9a9a; }
+.step.now i { background: var(--white); border: 6px solid var(--ink); }
+.step.now { color: var(--ink); font-weight: 700; }
+.step em { display: block; font-style: normal; font-weight: 700; color: var(--ink); }
+a.step.go { text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.doc { max-width: 680px; margin: 0 auto; border: 1px solid var(--line); border-radius: 4px; padding: 40px 44px; box-shadow: 0 2px 10px rgba(0,0,0,.06); font-size: 13px; }
+.doc h3 { margin: 18px 0 6px; font-size: 13px; }
+.doc .head { display: flex; justify-content: space-between; margin-bottom: 26px; }
+.doc .total td { font-weight: 700; border-bottom: 0; }
+tr.chg td { background: var(--soft); }
+tr.chg td:first-child { box-shadow: inset 3px 0 0 var(--ink); padding-left: 10px; }
+mark.gap { background: none; border: 2px dashed var(--ink); padding: 0 4px; font-weight: 700; }
+.bars { display: grid; gap: 10px; }
+.bar { display: grid; grid-template-columns: 110px 1fr 84px; gap: 10px; align-items: center; }
+.bar span { height: 14px; border-radius: 7px; background: var(--soft); border: 1px solid var(--line); overflow: hidden; }
+.bar span i { display: block; height: 100%; background: #9a9a9a; }
+.bar span i.full { background: #7a7a7a; background-image: repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.45) 4px 8px); }
+/* rail: title, max 3 plain facts, the decision (the only box), one line under the button */
+.rail { background: var(--white); border-left: 1px solid var(--line); padding: 16px 0 16px 15px; display: flex; flex-direction: column; min-height: 0; overflow: hidden; position: relative; }
+.facts { flex: 1; overflow: auto; min-height: 0; padding-top: 4px; }
+.rail h2 { font-size: 14px; margin: 2px 0 2px; }
+.rail .sub { margin-bottom: 12px; }
+.kv { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.rail .sub + .kv, .thumb + .kv { border-top: 1px solid var(--line); }
+.kv > span { color: var(--mute); font-size: 13px; }
+.kv b { text-align: right; }
+.kv b.gapb { border-bottom: 2px dashed var(--ink2); }
+.kv small { display: block; font-size: 13px; color: var(--mute); font-weight: 400; text-align: right; }
+.link { display: inline-block; margin: 10px 0 0; font-weight: 700; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.plain { margin: 12px 0 0; }
+.decide { margin-top: 12px; }
+.ask { border: 2px solid var(--ink); border-radius: 10px; background: var(--white); padding: 12px 14px; font-weight: 700; }
+.ask + .ask { margin-top: 8px; }
+.ask.compact { padding: 10px 12px; }
+.ask.compact .seg { margin-top: 8px; }
+.ask.compact .seg button { height: 40px; }
+.alt { font-size: 13px; color: var(--ink); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.seg3 { grid-template-columns: 1fr 1fr 1fr; }
+.seg button { height: 48px; border-radius: 24px; border: 1px solid #8a8a8a; background: var(--white); font-weight: 700; cursor: pointer; }
+.seg button small { display: block; font-size: 13px; font-weight: 400; color: var(--mute); line-height: 1.1; }
+.seg button[aria-pressed=true] { border: 2px solid var(--ink); background: var(--soft); }
+.field { display: block; margin-top: 10px; font-size: 13px; font-weight: 400; color: var(--mute); }
+.field input, .field select, .field textarea { display: block; width: 100%; margin-top: 4px; border: 1px solid #8a8a8a; border-radius: 8px; padding: 10px 12px; background: var(--white); font-size: 14px; font-weight: 400; color: var(--ink); }
+.field textarea { min-height: 120px; resize: vertical; }
+.field textarea.full { min-height: 196px; }
+.check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 400; cursor: pointer; }
+.btn2 { display: block; width: 100%; margin-top: 8px; height: 40px; border-radius: 20px; border: 1px solid #8a8a8a; background: var(--white); font-weight: 700; cursor: pointer; }
+.btn2.inline { display: inline-block; width: auto; height: 30px; padding: 0 14px; margin: 0 0 0 8px; }
+.titlebar, .flexrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.titlebar .btn2, .flexrow .btn2 { width: auto; padding: 0 18px; margin: 0; }
+.flexrow { padding: 8px 8px 8px 16px; }
+.hint { text-align: center; font-size: 13px; color: var(--ink); margin: 10px 0 6px; min-height: 18px; }
+.anchor { height: 56px; width: 100%; border-radius: 28px; border: 0; background: var(--dark); color: var(--white); font-size: 14px; font-weight: 700; cursor: pointer; flex: none; }
+.anchor:disabled { background: #c4c4c4; color: #2a2a2a; cursor: not-allowed; }
+.anchor kbd { font: inherit; opacity: .7; margin-left: 8px; }
+.toast { background: var(--dark); color: var(--white); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: 13px; }
+.toast button { margin-left: auto; background: var(--white); color: var(--ink); border: 0; border-radius: 14px; padding: 4px 12px; font-weight: 700; cursor: pointer; }
+.empty { color: var(--mute); padding: 18px 16px; margin: 0; border-bottom: 1px solid var(--line); }
+.back { display: inline-block; font-size: 13px; color: var(--mute); text-decoration: none; margin: 0 0 2px; }
+.back:hover { color: var(--ink); text-decoration: underline; }
+.state { font-size: 14px; color: var(--ink); margin-top: 16px; }
+.state a { color: var(--ink); font-weight: 700; }
+.thumb { height: 120px; border-radius: 10px; margin: 0 0 8px; display: grid; place-items: center; align-content: center; gap: 4px; text-align: center;
+  background: repeating-linear-gradient(135deg, #e4e4e4 0 10px, #d6d6d6 10px 20px); }
+.thumb span { font-weight: 700; font-size: 13px; }
+.thumb small { font-size: 13px; color: var(--ink2); }
+.row.two > span:first-child { padding: 8px 0; }
+.row.two b { display: block; }
+.row.two small { display: block; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.two small b { display: inline; color: var(--ink); }
+.row.two[aria-selected=true] { font-weight: 400; }
+.chev { font-size: 20px; color: var(--mute); margin-left: 8px; }
+.tools { display: flex; gap: 12px; align-items: center; }
+.tools .seg { margin-top: 0; width: 360px; }
+.tools .seg button { height: 40px; }
+.agentline { display: block; margin: -6px 0 4px; font-size: 14px; color: var(--ink); }
+.agentline:hover { text-decoration: underline; color: var(--ink); }
+
+/* flat round (26 Nov): no box around lists, the panel is a column split by one line, both sides can hide */
+.logo { display: flex; align-items: center; justify-content: space-between; }
+.sidebtn, .railbtn { border: 0; background: none; cursor: pointer; font-size: 18px; color: var(--mute); width: 32px; height: 32px; border-radius: 16px; }
+.sidebtn:hover, .railbtn:hover { background: var(--soft); color: var(--ink); }
+.railbtn { position: absolute; top: 8px; right: 0; }
+.rail h2 { padding-right: 36px; }
+.nav i { display: none; font-style: normal; font-weight: 700; font-size: 13px; width: 28px; text-align: center; }
+.app.side-min { grid-template-columns: 64px 1fr; }
+.app.side-min .side { padding: 20px 8px; }
+.app.side-min .logo span, .app.side-min .nav span { display: none; }
+.app.side-min .logo { justify-content: center; padding: 4px 0 18px; }
+.app.side-min .nav { justify-content: center; padding: 8px 0; position: relative; }
+.app.side-min .nav i { display: block; }
+.app.side-min .nav b { position: absolute; top: 6px; right: 6px; min-width: 0; width: 8px; height: 8px; padding: 0; font-size: 0; border: 0; background: var(--ink); border-radius: 4px; }
+.page.rail-min { grid-template-columns: minmax(0,1fr) 44px; }
+.rail.strip { padding: 8px 0; align-items: center; gap: 12px; }
+.rail.strip .railbtn { position: static; }
+.striplabel { writing-mode: vertical-rl; font-size: 13px; color: var(--mute); }
+.work.full { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
+.mailsplit { flex: 1; min-height: 0; display: grid; grid-template-columns: 340px minmax(0,1fr); border-top: 1px solid var(--line); }
+.maillist { overflow: auto; border-right: 1px solid var(--line); padding: 12px 0 16px; }
+.maillist .lab { margin-left: 0; }
+.mailread { overflow: auto; padding: 16px 0 16px 24px; }
+.readmore { color: var(--ink); font-weight: 700; }
+pre.original { white-space: pre-wrap; font: inherit; margin: 12px 0 0; padding-left: 12px; border-left: 3px solid var(--line); color: var(--ink2); }
+table.chain td:first-child { width: 40%; }
+table.chain b { font-weight: 700; }
+/* long words wrap instead of pushing columns off the screen */
+td { overflow-wrap: anywhere; }
+table.arts td:first-child, table.arts td:nth-child(3) { white-space: nowrap; overflow-wrap: normal; }
+table.arts td:nth-child(6) { max-width: 260px; }
+.kv b { overflow-wrap: anywhere; min-width: 0; }
+
+/* Long-content rules (26 Nov, stress mode): names, articles and suppliers can be 10+ words.
+   1 Text breaks inside long words instead of pushing columns off the screen.
+   2 Titles and list lines show at most 2 lines; the full text is on hover and in the panel.
+   3 Grey side text (dates, notes) gets a max width and an ellipsis, so it never squeezes the main text.
+   4 A fact line puts the value under its label when both don't fit on one line.
+   5 Choice buttons grow with their text (never cut, the load % must stay visible); the decision area scrolls before it can push the main button.
+   6 The main button is always one line: its label holds no free text (no customer names). */
+body { overflow-wrap: break-word; }
+.row > span:first-child, .split > *, .mailsplit > *, td, .kv b, .kv span, .seg button, .ask { min-width: 0; }
+h1, .rail h2, .rail .sub, .row > span:first-child:not(:has(b)) { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.row .meta { max-width: 220px; overflow: hidden; text-overflow: ellipsis; flex-shrink: 1; }
+.row .tag, .row .chev { flex-shrink: 0; }
+.row.two b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kv { flex-wrap: wrap; column-gap: 12px; row-gap: 2px; }
+.kv span { max-width: 100%; }
+.kv b { margin-left: auto; max-width: 100%; }
+.seg button { height: auto; min-height: 48px; padding: 6px 10px; line-height: 1.25; }
+.hint { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.ask.compact .seg button { min-height: 40px; height: auto; }
+.decide { max-height: 58%; overflow: auto; flex: none; }
+.anchor { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 24px; }
+.doc td { overflow-wrap: anywhere; }
+td.num, .num { white-space: nowrap; }
+.seg.stack { grid-template-columns: 1fr; }
+.seg.stack button { text-align: left; padding: 8px 16px; border-radius: 12px; }
+
+/* habits round (26 Nov): layout instead of middle dots; grey only for time, dates, status and field labels */
+small { font-size: 13px; }
+.row > .two { flex: 1; min-width: 0; padding: 8px 0; }
+.row > .two > b, .row > .two > span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row > .two > span { font-weight: 400; color: var(--ink); }
+.row .code { flex-shrink: 0; width: 96px; font-size: 13px; color: var(--ink); font-weight: 400; font-variant-numeric: tabular-nums; }
+.lab .count { display: inline-block; min-width: 20px; height: 20px; line-height: 18px; padding: 0 6px; margin-left: 6px; border-radius: 10px; border: 1px solid var(--ink2); box-sizing: border-box; font-size: 12px; text-align: center; vertical-align: 1px; }
+.rows .row .meta { min-width: 88px; text-align: right; }
+.rows .row > .tag { min-width: 124px; text-align: center; box-sizing: border-box; }
+
+/* ===== Rules v1.2 applied (26 Nov): rules/typography-and-spacing.md §1, §2, §4.
+   Overrides the older values above. Fonts: full Inter (rsms.me, ss02 on) + Barlow Condensed 700 for page names.
+   Weights: 400 and 600 only. Sizes: 12, 13, 14, 15, 16, 20, 32. Radii: 4, 8, 12 (+10 for count badges). ===== */
+:root { --inter: InterVariable, Inter, system-ui, -apple-system, "Segoe UI", Arial, sans-serif; --barlow: "Barlow Condensed", "Arial Narrow", sans-serif; }
+body { font: 400 14px/20px var(--inter); font-feature-settings: "ss02"; }
+b, strong, th, h1, h2, h3, .logo, .nav[aria-current], .who, .lab, .row[aria-selected=true], .tag.urgent, .banner, .step.now, .step em, .doc .total td,
+tr.missing td, mark.gap, .ask, .seg button, .btn2, .anchor, .toast button, .thumb span, .link, .readmore, .state a, table.chain b, .nav i { font-weight: 600; }
+td.num, th.num, .num, .kv b, .bar b { font-feature-settings: "ss02", "tnum"; }
+/* codes and dates read as words: ss02 only, no tabular figures (tnum makes O2611-009 look like a typewriter font) */
+.row .code { font-variant-numeric: normal; font-feature-settings: "ss02"; }
+
+/* T1 page name on list pages, T2 record title on record pages (they have a Back link) */
+h1 { font: 700 32px/32px var(--barlow); text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
+.back + h1 { font: 600 20px/26px var(--inter); text-transform: none; letter-spacing: 0; }
+.back { margin: 0 0 4px; line-height: 18px; }
+.sub { margin: 0 0 16px; line-height: 20px; }
+.lab { font-size: 14px; line-height: 20px; margin: 24px 0 8px; }
+.logo { font: 700 20px/20px var(--barlow); letter-spacing: .04em; padding: 4px 12px 20px; }
+.mail h2 { font-size: 16px; line-height: 24px; margin: 0 0 4px; }
+.rail h2 { font-size: 14px; line-height: 20px; margin: 0 0 4px; }
+.doc h3 { font-size: 13px; line-height: 18px; margin: 16px 0 8px; }
+
+/* T5r reading text: mail bodies, summaries, originals; max ~70 characters */
+.mail pre, .mail > p, pre.original { font-size: 15px; line-height: 22px; max-width: 640px; }
+.mail pre { margin: 16px 0; }
+
+/* layout §4.2 */
+.app { grid-template-columns: 240px 1fr; }
+.side { padding: 20px 12px; gap: 4px; }
+.shell { grid-template-rows: 64px minmax(0, 1fr); }
+.top { padding: 0 16px 0 32px; gap: 16px; }
+.search { height: 40px; border-radius: 8px; padding: 0 16px; }
+.who { height: 40px; min-width: 40px; border-radius: 8px; }
+.page { padding: 0 16px 0 32px; gap: 16px; }
+.work { padding: 20px 0 24px; }
+.work.full { padding-bottom: 24px; }
+.nav { padding: 8px 12px; line-height: 20px; }
+
+/* lists and tables §4.5 */
+.row { min-height: 48px; }
+.row:has(> .two), .row.two { min-height: 60px; }
+.tag { height: 24px; line-height: 22px; padding: 0 8px; border-radius: 4px; }
+.chip { border-radius: 4px; padding: 2px 8px; margin: 0 8px 8px 0; line-height: 18px; }
+th { height: 40px; padding: 0 12px; line-height: 18px; }
+td { padding: 12px 12px; line-height: 20px; }
+.empty { padding: 16px; }
+.stepper { margin: 4px 0 24px; }
+.step i { margin: 0 auto 4px; }
+
+/* right panel §4.4 */
+.rail { padding: 16px 0 16px 16px; }
+.facts { padding-top: 0; }
+.rail .sub { margin: 0 0 12px; }
+.kv { padding: 12px 0; line-height: 20px; }
+.decide { margin-top: 16px; }
+.ask { border-radius: 8px; padding: 16px; }
+.ask.compact { padding: 12px; }
+.ask + .ask { margin-top: 8px; }
+.seg { margin-top: 12px; }
+.hint { margin: 12px 0 8px; line-height: 18px; }
+
+/* components §4.5: 8 px corners, never pills */
+.anchor { height: 44px; border-radius: 8px; font-size: 15px; line-height: 20px; padding: 0 22px; }
+.seg button { min-height: 44px; border-radius: 8px; padding: 4px 12px; line-height: 20px; font-size: 14px; }
+.seg button small { line-height: 18px; }
+.seg.stack button { border-radius: 8px; padding: 8px 12px; }
+.ask.compact .seg button, .tools .seg button { min-height: 40px; }
+.btn2 { height: 40px; border-radius: 8px; padding: 0 18px; font-size: 14px; }
+.btn2.inline { height: 32px; padding: 0 12px; font-size: 13px; }
+.field { margin-top: 12px; line-height: 18px; }
+.field input, .field select { height: 40px; padding: 0 12px; border-radius: 8px; }
+.field textarea { padding: 8px 12px; border-radius: 8px; line-height: 20px; }
+.toast { border-radius: 8px; padding: 12px; line-height: 18px; gap: 12px; }
+.toast button { border-radius: 8px; height: 32px; padding: 0 12px; }
+.banner, .card { border-radius: 12px; padding: 16px; }
+.thumb { border-radius: 8px; }
+.bar span { border-radius: 4px; }
+.doc { border-radius: 4px; padding: 40px; }
+.sidebtn, .railbtn { font-size: 16px; border-radius: 8px; }
+.chev { font-size: 20px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="side" id="side" aria-label="Main"></nav>
+  <div class="shell">
+    <header class="top"><input class="search" id="gsearch" placeholder="Search a job, document number or customer" aria-label="Search jobs"><span class="keys"><span>↑ ↓ pick</span><span>Enter: main button</span><span>← → choose</span><span>[ ] hide sides</span><span>/ search</span></span><span class="who" aria-label="Arjan Laninga">AL</span></header>
+    <main class="page" id="page"></main>
+  </div>
+</div>
+<script src="data.js"></script>
+<script src="walk-recorder.js"></script>
+<script src="app.js"></script>
+<script src="stress.js"></script>
+</body>
+</html>

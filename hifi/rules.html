@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rules sheet: typography and spacing, v1.2</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700&display=swap">
+<style>
+/* This sheet follows its own rules: Inter 400/500/600, Barlow 700 caps for the page name, 4 px spacing tokens. */
+:root { --text:#1a1a1a; --second:#5f5f5f; --line:#dcdcdc; --soft:#f3f3f3; --mark:#2f5d50;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s8:32px; --s10:40px; --s14:56px; }
+* { box-sizing: border-box; }
+body { margin: 0; font: 400 14px/20px InterVariable, Inter, system-ui, sans-serif; color: var(--text); font-feature-settings: "ss02"; }
+td.num, .t6 { font-feature-settings: "ss02", "tnum"; }
+main { max-width: 1280px; margin: 0 auto; padding: var(--s5) var(--s8) var(--s14); }
+.t1 { font: 700 32px/32px "Barlow Condensed", sans-serif; text-transform: uppercase; letter-spacing: .04em; margin: 0; }
+.t2 { font: 600 20px/26px InterVariable, sans-serif; margin: 0; }
+.t3 { font: 600 16px/24px InterVariable, sans-serif; margin: 0; }
+.t4 { font: 600 14px/20px InterVariable, sans-serif; }
+.t5 { font: 400 14px/20px InterVariable, sans-serif; }
+.t6 { font: 600 14px/20px InterVariable, sans-serif; }
+.t7 { font: 400 13px/18px InterVariable, sans-serif; color: var(--second); }
+.t8 { font: 400 13px/18px InterVariable, sans-serif; color: var(--second); }
+.t5r { font: 400 15px/22px InterVariable, sans-serif; }
+.t12 { font: 600 12px/16px InterVariable, sans-serif; }
+.sub { margin: var(--s1) 0 var(--s4); }
+section { margin-top: var(--s10); }
+section > h2 { margin-bottom: var(--s2); }
+.note { max-width: 640px; margin: 0 0 var(--s4); }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; height: 40px; padding: 0 var(--s3); background: var(--soft); }
+td { padding: var(--s3); border-bottom: 1px solid var(--line); vertical-align: middle; }
+td.num { text-align: right; white-space: nowrap; }
+.spec { white-space: nowrap; }
+.swatch { display: inline-block; }
+/* spacing bars */
+.bar { display: grid; grid-template-columns: 90px 60px 1fr; align-items: center; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.bar i { display: block; height: 16px; background: var(--mark); }
+/* panel diagram */
+.panelwrap { display: grid; grid-template-columns: 352px 1fr; gap: var(--s8); align-items: start; }
+.panel { border-left: 1px solid var(--line); padding: var(--s4); position: relative; height: 640px; display: flex; flex-direction: column; }
+.panel .facts { flex: 1; }
+.kv { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s3) 0; border-bottom: 1px solid var(--line); }
+.kv:first-of-type { border-top: 1px solid var(--line); }
+.ask { border: 2px solid var(--text); border-radius: 8px; padding: var(--s4); display: grid; gap: var(--s3); margin-top: var(--s4); }
+.choices { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+.btn { height: 40px; padding: 0 18px; border-radius: 8px; border: 1px solid #8a8a8a; background: #fff; font: 600 14px/20px InterVariable, sans-serif; cursor: default; }
+.btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.btn.lg { height: 44px; padding: 0 22px; font-size: 15px; }
+.btn.main { background: var(--text); color: #fff; border: 0; }
+.choice { min-height: 44px; padding: var(--s2) var(--s3); border-radius: 8px; border: 1px solid #8a8a8a; background: #fff; font: 600 14px/20px InterVariable, sans-serif; text-align: left; }
+.choice small { display: block; font: 400 13px/18px InterVariable; color: var(--second); }
+.choice[aria-pressed=true] { border: 2px solid var(--text); background: var(--soft); }
+.hint { text-align: center; margin: var(--s3) 0 var(--s2); }
+.field label { display: block; margin-bottom: var(--s1); }
+.field input { width: 100%; height: 40px; padding: 0 var(--s3); border: 1px solid #7d8580; border-radius: 8px; font: 400 14px/20px InterVariable; }
+.field p { margin: var(--s1) 0 0; }
+.tag { display: inline-flex; align-items: center; height: 24px; padding: 0 var(--s2); border: 1px solid var(--line); border-radius: 4px; font: 500 13px/18px InterVariable; color: #3d3d3d; }
+.badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border: 1px solid #3d3d3d; border-radius: 10px; }
+.row { display: flex; gap: var(--s3); align-items: center; padding: 0 var(--s4); min-height: 48px; border-bottom: 1px solid var(--line); }
+.row.two { min-height: 60px; }
+.row > span:first-child { flex: 1; min-width: 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.who2 { flex: 1; min-width: 0; display: block; }
+.who2 > * { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .code { width: 96px; flex-shrink: 0; font-size: 13px; }
+.row .meta { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s8); }
+.box { border: 1px solid var(--line); border-radius: 12px; padding: var(--s4); }
+.ok::before { content: "Do: "; font-weight: 600; color: var(--text); }
+.no::before { content: "Don't: "; font-weight: 600; color: var(--text); }
+.toast { display: inline-flex; gap: var(--s3); align-items: center; background: var(--text); color: #fff; border-radius: 8px; padding: var(--s2) var(--s3); font: 400 13px/18px InterVariable; }
+.toast b { background: #fff; color: var(--text); border-radius: 8px; padding: var(--s1) var(--s3); font-weight: 600; }
+.rhythm > * { position: relative; }
+.gap { height: var(--h); background: repeating-linear-gradient(45deg, #e9efec 0 4px, #fff 4px 8px); border-left: 2px solid var(--mark); padding-left: var(--s2); font: 500 13px/var(--h) Inter; color: var(--mark); overflow: hidden; }
+</style>
+</head>
+<body>
+<main>
+  <h1 class="t1">Rules sheet</h1>
+  <p class="t7 sub">Typography and spacing, version 1.2, 26 Nov. Full Inter with "ss02" on. Every sample below is drawn with the rule it shows.</p>
+  <p class="note t5">Read it top to bottom and mark anything you'd change. Nothing in the hi-fi changes until you say go. The text version is <b>rules/typography-and-spacing.md</b>.</p>
+
+  <section>
+    <h2 class="t3">1. Typefaces</h2>
+    <p class="t7 note">Two typefaces. Inter for everything people read or press. Barlow Condensed only for the page name, in capitals.</p>
+    <div class="cols">
+      <div><p class="t1" style="font-size:56px;line-height:56px">Barlow 700</p><p class="t7">Page names only: TODAY, INBOX, PROJECTS</p></div>
+      <div><p class="t2" style="font-size:40px;line-height:48px;font-weight:400">Inter 400 <span style="font-weight:600">600</span></p><p class="t7">Everything else, full Inter, self-hosted, "ss02" on: <span style="font-size:20px;color:var(--text)">Il1 O0 I2611-001-1</span></p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t3">2. The 13 text roles, at real size</h2>
+    <p class="t7 note">Every text on a screen has one of these roles. A screen uses at most 5 of them.</p>
+    <table>
+      <thead><tr><th class="t8">#</th><th class="t8">Role</th><th class="t8">Sample</th><th class="t8">Spec</th><th class="t8">Use</th></tr></thead>
+      <tbody>
+        <tr><td>T1</td><td class="t6">Page name</td><td><span class="t1">Projects</span></td><td class="t7 spec">Barlow 700, 32/32, caps, +4 %</td><td class="t7">One per list page</td></tr>
+        <tr><td>T2</td><td class="t6">Record title</td><td><span class="t2">De Graaf: Offices</span></td><td class="t7 spec">Inter 600, 20/26</td><td class="t7">One per record page, customer first</td></tr>
+        <tr><td>T3</td><td class="t6">Section title</td><td><span class="t3">What the agent may do</span></td><td class="t7 spec">Inter 600, 16/24</td><td class="t7">Only when a page has 2+ areas</td></tr>
+        <tr><td>T4</td><td class="t6">Group label</td><td><span class="t4">Needs you <span class="badge t12">5</span></span></td><td class="t7 spec">Inter 600, 14/20</td><td class="t7">Heads a list group</td></tr>
+        <tr><td>T5</td><td class="t6">Body</td><td><span class="who2"><b class="t6">Bentacera</b><span class="t5">Glass late, customer not told yet</span></span></td><td class="t7 spec">Inter 400, 14/20</td><td class="t7">Scanned: rows, cells, facts. Line 2 of a row is body, not grey</td></tr>
+        <tr><td>T5r</td><td class="t6">Reading</td><td><span class="t5r">Beste Arjan, we hebben toch een extra deur nodig op de begane grond.</span></td><td class="t7 spec">Inter 400, 15/22</td><td class="t7">Read: mail, summaries, drafts, max 640 px</td></tr>
+        <tr><td>T6</td><td class="t6">Body strong</td><td><span class="t6">€&nbsp;32,441.83</span></td><td class="t7 spec">Inter 600, 14/20</td><td class="t7">Values, the question, selected row</td></tr>
+        <tr><td>T7</td><td class="t6">Supporting</td><td><span class="t7">waiting 4 d, 19 Nov</span></td><td class="t7 spec">Inter 400, 13/18, grey</td><td class="t7">Time, dates, status only. Never names, jobs or amounts</td></tr>
+        <tr><td>T8</td><td class="t6">Label</td><td><span class="t8">Cost per m1</span></td><td class="t7 spec">Inter 400, 13/18, grey</td><td class="t7">Above a field, table heads, tags</td></tr>
+        <tr><td>T9</td><td class="t6">Button</td><td><button class="btn sm">Undo</button> <button class="btn">Save</button> <button class="btn lg main">Approve and send</button></td><td class="t7 spec">Inter 600, 13 / 14 / 15</td><td class="t7">Verb first, one line, no names</td></tr>
+        <tr><td>T10</td><td class="t6">Link</td><td><a href="#" class="t6" style="color:inherit;text-underline-offset:3px">Open the quote</a></td><td class="t7 spec">inherits, 600, underline</td><td class="t7">Inline links</td></tr>
+        <tr><td>T11</td><td class="t6">Toast</td><td><span class="toast">Quote O2611-009 sent <b>Undo</b></span></td><td class="t7 spec">Inter 400, 13/18 on dark</td><td class="t7">Feedback after an action</td></tr>
+        <tr><td>T12</td><td class="t6">Count badge</td><td><span class="badge t12">5</span></td><td class="t7 spec">Inter 600, 12/16</td><td class="t7">The only 12 px text</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2 class="t3">3. How roles differ</h2>
+    <div class="cols" style="margin-top:var(--s4)">
+      <div class="box"><p class="t4" style="margin:0 0 var(--s2)">Body vs supporting: size and colour</p><p class="t5" style="margin:0">Wallsz: invoice 13 days overdue</p><p class="t7" style="margin:var(--s1) 0 0">20 Nov</p></div>
+      <div class="box"><p class="t4" style="margin:0 0 var(--s2)">Body vs body strong: weight only</p><p class="t5" style="margin:0">Total excl. VAT &nbsp;<span class="t6">€&nbsp;7,295.44</span></p><p class="t7" style="margin:var(--s1) 0 0">Same size, same colour, 400 → 600</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t3">4. Long text</h2>
+    <p class="t7 note">Names and articles can run to 10+ words. Each role decides up front: wrap or cut.</p>
+    <div class="row two"><span class="t5" title="De Graaf Interieurbouw en Projectinrichting Noord-Holland, new request: 12 m glass wall with matte folie at eye level, 4 or 5 doors">De Graaf Interieurbouw en Projectinrichting Noord-Holland, new request: 12 m glass wall with matte folie at eye level, 4 or 5 doors</span><span class="meta t7">waiting 2 d, forwarded by Daan Verhoeven</span><span class="tag">New request</span></div>
+    <p class="t7" style="margin:var(--s2) 0 0">List rows stop at 2 lines with "…" and the full text on hover. Grey side text stops at 220 px. The tag never shrinks.</p>
+  </section>
+
+  <section>
+    <h2 class="t3">5. Spacing scale</h2>
+    <p class="t7 note">Everything sits on a 4 px grid. Only these steps; never 2, 6, 10, 14 or 18.</p>
+    <div class="bar"><span class="t6">space-1</span><span class="t7">4</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:4px"></i><span class="t7">label → field, title → subtitle</span></span></div>
+    <div class="bar"><span class="t6">space-2</span><span class="t7">8</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:8px"></i><span class="t7">between buttons, group label → list, hint → main button</span></span></div>
+    <div class="bar"><span class="t6">space-3</span><span class="t7">12</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:12px"></i><span class="t7">fact rows, fields in a form, parts of a decision</span></span></div>
+    <div class="bar"><span class="t6">space-4</span><span class="t7">16</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:16px"></i><span class="t7">panel padding, between blocks, work ↔ panel</span></span></div>
+    <div class="bar"><span class="t6">space-5</span><span class="t7">20</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:20px"></i><span class="t7">page top</span></span></div>
+    <div class="bar"><span class="t6">space-6</span><span class="t7">24</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:24px"></i><span class="t7">between sections, above a group label, page bottom</span></span></div>
+    <div class="bar"><span class="t6">space-8</span><span class="t7">32</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:32px"></i><span class="t7">page sides</span></span></div>
+    <div class="bar"><span class="t6">space-10</span><span class="t7">40</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:40px"></i><span class="t7">rare: before a separate last area</span></span></div>
+    <div class="bar"><span class="t6">space-14</span><span class="t7">56</span><span style="display:flex;gap:var(--s3);align-items:center"><i style="width:56px"></i><span class="t7">rare: empty states</span></span></div>
+  </section>
+
+  <section>
+    <h2 class="t3">6. Page rhythm</h2>
+    <p class="t7 note">The hatched strips are the spaces, drawn at real size.</p>
+    <div class="rhythm" style="max-width:640px">
+      <a href="#" class="t7" style="text-decoration:none">← Back</a>
+      <div class="gap" style="--h:4px"></div>
+      <h3 class="t2">De Graaf: Offices</h3>
+      <div class="gap" style="--h:4px"></div>
+      <p class="t5" style="margin:0">Job 2611-002, Stationsplein 4, Utrecht, week 50</p>
+      <div class="gap" style="--h:16px">16</div>
+      <div class="t7" style="padding:var(--s2) 0;border-top:2px solid var(--line);border-bottom:2px solid var(--line)">[ stepper ]</div>
+      <div class="gap" style="--h:24px">24</div>
+      <p class="t4" style="margin:0">Needs you <span class="badge t12">2</span></p>
+      <div class="gap" style="--h:8px"></div>
+      <div class="row" style="border-top:1px solid var(--line)"><span class="who2"><b class="t6">Wallsz</b><span class="t5">Politie KPLD: agent made R2 with 9 doors</span></span><span class="code t5">O2611-009</span><span class="meta t7">waiting 4 d</span><span class="tag">Verify</span></div>
+      <div class="row"><span class="who2"><b class="t6">Bentacera</b><span class="t5">Glass late, customer not told yet</span></span><span class="code t5">I2611-001-1</span><span class="meta t7">waiting 2 d</span><span class="tag" style="border-color:var(--text);color:var(--text);font-weight:600">Supplier late</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t3">7. The right panel</h2>
+    <div class="panelwrap" style="margin-top:var(--s4)">
+      <div class="panel">
+        <div class="facts">
+          <p class="t6" style="margin:0">Wallsz: Politie KPLD</p>
+          <p class="t5" style="margin:var(--s1) 0 var(--s3)">Quote O2611-009 R2, Paul Terlouw</p>
+          <div class="kv"><span class="t7">Total excl. VAT</span><span class="t6">€&nbsp;32,441.83</span></div>
+          <div class="kv"><span class="t7">Margin</span><span class="t6">17.4 %</span></div>
+          <div class="kv"><span class="t7">Changed</span><span class="t6">8 → 9 doors</span></div>
+          <div class="ask"><span class="t6">Transport has no price. Wallsz's last job paid €&nbsp;450.</span>
+            <div class="choices"><button class="choice" aria-pressed="true">Use €&nbsp;450<small>last job</small></button><button class="choice">Keep €&nbsp;0<small>no transport</small></button></div></div>
+        </div>
+        <p class="t7 hint" style="color:var(--text)">Mails R2 to paul.terlouw@wallsz.nl. Undo for 10 s.</p>
+        <button class="btn lg main" style="width:100%">Approve and send R2</button>
+      </div>
+      <table>
+        <thead><tr><th class="t8">From</th><th class="t8">To</th><th class="t8 num">Space</th></tr></thead>
+        <tbody>
+          <tr><td>Panel top</td><td>Title</td><td class="num">16</td></tr>
+          <tr><td>Title</td><td>Subtitle</td><td class="num">4</td></tr>
+          <tr><td>Subtitle</td><td>First fact</td><td class="num">12</td></tr>
+          <tr><td>Fact row</td><td>top and bottom, hairline under, max 3</td><td class="num">12</td></tr>
+          <tr><td>Last fact</td><td>Decision</td><td class="num">16</td></tr>
+          <tr><td>Decision</td><td>padding, between its parts</td><td class="num">16, 12</td></tr>
+          <tr><td>Decision</td><td>Hint</td><td class="num">12</td></tr>
+          <tr><td>Hint</td><td>Main button</td><td class="num">8</td></tr>
+          <tr><td>Main button</td><td>Panel bottom, never moves</td><td class="num">16</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t3">8. Components</h2>
+    <div class="cols" style="margin-top:var(--s4)">
+      <div style="display:grid;gap:var(--s4);align-content:start">
+        <div style="display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap"><button class="btn sm">Small 32</button><button class="btn">Medium 40</button><button class="btn lg">Large 44</button><button class="btn lg main">Main 44</button></div>
+        <p class="t7" style="margin:0">8 px corners, never pills. 8 px between buttons.</p>
+        <div class="field"><label class="t8">Cost per m1 (12 m1)</label><input value="18.50"><p class="t7">Type the price, press Enter</p></div>
+        <div style="display:flex;gap:var(--s2);align-items:center"><span class="tag">New request</span><span class="tag" style="border-color:var(--text);color:var(--text);font-weight:600">Overdue</span><span class="badge t12">5</span></div>
+      </div>
+      <table>
+        <thead><tr><th class="t8">Line</th><th class="t8 num">Qty</th><th class="t8 num">Total</th></tr></thead>
+        <tbody><tr><td>Systeemwand enkel glas, aluminium profiel, hoogte 3000 mm</td><td class="num">12 m1</td><td class="num">€&nbsp;3,689.28</td></tr>
+        <tr><td>Opdekdeur, HPL afwerking, RAL 9010</td><td class="num">4 st</td><td class="num">€&nbsp;1,180.96</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t3">9. Do and don't</h2>
+    <div class="cols" style="margin-top:var(--s4)">
+      <div style="display:grid;gap:var(--s2)"><p class="t5 ok" style="margin:0">De Graaf / Offices / 2611-002 in its own column</p><p class="t5 ok" style="margin:0">New request</p><p class="t5 ok" style="margin:0">€&nbsp;7,295.44, 22 h, week 50, 2 Dec</p><p class="t4 ok" style="margin:0">Needs you <span class="badge t12">5</span></p><p class="t5 ok" style="margin:0">See all 12</p><p class="t5 ok" style="margin:0">Line 2 in text colour</p></div>
+      <div style="display:grid;gap:var(--s2)"><p class="t5 no" style="margin:0">De Graaf &middot; Offices &middot; job 2611-002</p><p class="t5 no" style="margin:0">New request for De Graaf Interieurbouw</p><p class="t5 no" style="margin:0">7295.44, 22, 50, 2026-12-02</p><p class="t7 no" style="margin:0;text-transform:uppercase;letter-spacing:.04em">needs you (5)</p><p class="t5 no" style="margin:0">See all →</p><p class="t7 no" style="margin:0">Grey second lines with names</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="t3">Open decisions</h2>
+    <table style="margin-top:var(--s4)">
+      <thead><tr><th class="t8">Question</th><th class="t8">Options</th><th class="t8">Default</th></tr></thead>
+      <tbody>
+        <tr><td>Font of the quote and invoice PDF</td><td class="t7">Inter, or Uniframe's current Offerte font</td><td>Inter</td></tr>
+        <tr><td>Barlow capitals for page names</td><td class="t7">Keep (brand) or Inter 20 everywhere (calmer)</td><td>Keep, list pages only</td></tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+</body>
+</html>
