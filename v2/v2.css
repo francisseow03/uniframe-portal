@@ -137,3 +137,73 @@ tr.chg { background: #EEF9FB; }
 tr.missing td { border-bottom: 1px solid var(--line); font-weight: 600; background: #EEF9FB; }
 mark.gap { border: 1px dashed var(--warn); border-radius: 2px; font-weight: 600; }
 .kv b.gapb { border-bottom: 1px dashed var(--warn); }
+
+/* ===== Spacing pass (27 Nov). Only steps from the scale: 4, 8, 12, 16, 20, 24, 32, 40, 56.
+   One text edge: everything inside a card or table starts 16 px from its line (+1 px for the line itself).
+   Page rhythm: title 8 sub 4 agent line | 24 | tabs 12 tools | 32 to a card with a heading, 16 to one without | 32 between cards. ===== */
+/* side menu: logo, icons and words on one edge (24 px from the side) */
+.logo { padding: 4px 12px 24px; gap: 8px; }
+.nav { gap: 12px; padding: 8px 12px; }
+.navgroup { gap: 4px; margin-bottom: 16px; }
+.navbottom { gap: 4px; }
+.nav b, .lab .count, .tabs .count, .tools .count { padding: 0 8px; margin-left: 0; }
+/* title block */
+h1, .titlebar { margin: 0 0 8px; }
+.titlebar h1 { margin: 0; }
+.work > .sub, .work .sub:first-of-type { margin: 0; }
+.agentline { display: block; margin: 4px 0 0; }
+.back { display: inline-block; margin: 0 0 4px; }
+/* first block under the title */
+.work > .tabs, .work > .tools, .work > .stepper, .work > .titlebar + .tools, .work > .sub + .tools, .work > .agentline + .tools, .work > .sub + table, .work > .split, .work > .mailsplit { margin-top: 24px; }
+.work > .tabs + .tools, .work > .titlebar + .tabs + .tools { margin-top: 12px; }
+.work > .stepper { margin-bottom: 0; }
+.work > .stepper + * { margin-top: 24px; }
+.work > .tools + .rows, .work > .tools + table { margin-top: 16px; }
+.work > .tools + .mailsplit { margin-top: 0; }
+/* card heading in the gap of the top line: text lines up with the rows (8 + 1 px line + 8 = 16 + 1) */
+.lab { margin: 32px 0 -12px 9px; padding: 0 8px; gap: 8px; }
+.maillist .lab, .maillist .lab:first-child { margin-left: 9px; }
+.maillist > .lab:first-child { margin-top: 32px; }
+.split .lab:first-child, .split > div > .lab:first-child { margin-top: 0; }
+.lab + .rows { padding-top: 12px; }
+.row { padding: 0 16px; gap: 16px; }
+.state { margin: 16px 0 0; }
+/* tables: same 16 px edge, 48 px rows, 40 px head */
+th, td { padding: 0 12px; }
+th:first-child, td:first-child { padding-left: 16px; }
+th:last-child, td:last-child { padding-right: 16px; }
+td { height: 48px; padding-top: 12px; padding-bottom: 12px; vertical-align: middle; }
+th { height: 40px; vertical-align: middle; }
+.lab + table thead th { height: 52px; padding-top: 12px; }
+.doc td, .doc th { height: auto; padding: 8px 12px; }
+/* planning rows */
+.weeks .bar { padding: 12px 16px; }
+/* buttons and small parts */
+.btn2, .tools .btn2, .titlebar .btn2 { padding: 0 16px; gap: 8px; }
+.btn2.inline { padding: 0 12px; }
+.topright { gap: 16px; }
+.topbtn { gap: 8px; padding: 0; }
+button.who { padding: 0; }
+.anchor { padding: 0 24px; }
+.tag { gap: 8px; }
+.chip { padding: 4px 8px; margin: 8px 8px 0 0; }
+/* right panel */
+.rail h2 { padding-right: 40px; }
+.kv { row-gap: 4px; column-gap: 12px; }
+.link, a.link { margin: 12px 0 0; }
+.alt, p.alt { margin: 12px 0; }
+.hint { margin: 12px 0 8px; }
+.ask { padding: 16px; }
+.ask + .ask { margin-top: 8px; }
+.seg { gap: 8px; margin-top: 12px; }
+/* pop-ups and menus */
+.pop.menu button { padding: 8px 16px 8px 12px; gap: 8px; }
+.dialog { padding: 24px; }
+.work > .titlebar { margin-bottom: 0; }
+.work > .titlebar + .tabs, .work > .titlebar + .sub { margin-top: 8px; }
+.work > .titlebar + .tabs { margin-top: 24px; }
+.lab + p { margin: 0; padding: 24px 16px 16px; border: 1px solid var(--line); border-radius: 0 0 16px 0; background: var(--white); }
+.tabs button { padding: 0 16px; }
+.tabs button[aria-pressed=true] { padding: 0 15px; }
+.railbtn { padding: 4px; }
+.search input, .gs input, .inlist input { padding: 0; }
