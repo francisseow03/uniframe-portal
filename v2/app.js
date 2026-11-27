@@ -46,7 +46,7 @@ const MAILS = {
 const ST = { sel: {}, doors: null, folie: '', saveArt: true, toast: null, done: {}, calcMade: false, quoteSent: false, order: null, pos: [], relFilter: 'All', mine: [], projQ: '', moreToday: false, relQ: '', artQ: '',
   allIn: false, delivered: false, finalSent: false, signer: 'Marloes de Graaf',
   week: { 'V2611-001': 50 }, rem: { 'F2610-004': 1 }, plan: { pl1: 'In production', pl2: 'Waits for quote', pl3: 'Waits for quote' }, activity: D.activity.map(a => a.slice()),
-  ce: {}, req: {}, planWeek: { pl2: 52, pl3: 11 }, delWin: '', pc: {}, q: {}, sort: {}, warnOnly: {}, pop: null, modal: null, box: 'inbox', sent: [], fresh: [], read: {}, phone: {}, catOf: {}, projCat: 'All', openWeek: null, showClosed: false, photo: '',
+  powerPick: {}, ce: {}, req: {}, planWeek: { pl2: 52, pl3: 11 }, delWin: '', pc: {}, q: {}, sort: {}, warnOnly: {}, pop: null, modal: null, box: 'inbox', sent: [], fresh: [], read: {}, phone: {}, catOf: {}, projCat: 'All', openWeek: null, showClosed: false, photo: '',
   power: { Quotes: 'Always ask', 'Customer replies': 'Ask me first', 'Supplier chases': 'Do it alone, show in log', 'Payment reminders': 'Do it alone, show in log' } };
 
 const Q = D.quotes;
@@ -469,8 +469,8 @@ V.settings = () => {
     <div class="lab">Users <span class="count">2</span></div><div class="rows"><div class="row" style="cursor:default"><span class="two"><b>Joost</b><span>Owner, can change agent power</span></span></div><div class="row" style="cursor:default"><span class="two"><b>Arjan Laninga</b><span>Sales, quotes and orders</span></span></div></div>`,
     rail: locked ? { facts: head('Quotes: always ask', 'Every quote waits for Joost or Arjan to approve it. The agent drafts, never sends. Only Joost can change this.'), label: 'Locked by the owner', enabled: false, hint: '' }
     : { facts: head(esc(sel), 'What the agent may do here.'),
-      decide: `<label class="field">The agent may<select id="power">${['Ask me first', 'Do it alone, show in log'].map(o => `<option ${ST.power[sel] === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>`,
-      label: 'Save', enabled: true, hint: ST.power[sel] === 'Ask me first' ? 'Drafts wait for you on Today' : 'Acts alone, logged in Agent activity', run: () => { const old = ST.power[sel]; ST.power[sel] = $('#power').value; toast('Saved', () => { ST.power[sel] = old; }); } }, list: 'settings' };
+      decide: `<label class="field">The agent may<select id="power">${['Ask me first', 'Do it alone, show in log'].map(o => `<option ${(ST.powerPick[sel] || ST.power[sel]) === o ? 'selected' : ''}>${o}</option>`).join('')}</select></label>`,
+      label: 'Save', enabled: true, hint: (ST.powerPick[sel] || ST.power[sel]) === 'Ask me first' ? 'Drafts wait for you on Today' : 'Acts alone, logged in Agent activity', run: () => { const old = ST.power[sel]; ST.power[sel] = ST.powerPick[sel] || $('#power').value; delete ST.powerPick[sel]; toast('Saved', () => { ST.power[sel] = old; }); } }, list: 'settings' };
 };
 
 /* ---------- v2: categories, list tools, pop-ups, mailbox, planning days ---------- */
@@ -752,7 +752,7 @@ document.addEventListener('input', e => {
   if (id === 'projq') { ST.projQ = e.target.value; reSearch('projq'); }
   if (id.startsWith('q-')) { ST.q[id.slice(2)] = e.target.value; applyListTools(); }
 });
-document.addEventListener('change', e => { if (e.target.id === 'photo' && e.target.files[0]) { ST.photo = e.target.files[0].name; render(); } if (e.target.id === 'saveart') { ST.saveArt = e.target.checked; render(); } if (e.target.id === 'power') render(); });
+document.addEventListener('change', e => { if (e.target.id === 'photo' && e.target.files[0]) { ST.photo = e.target.files[0].name; render(); } if (e.target.id === 'saveart') { ST.saveArt = e.target.checked; render(); } if (e.target.id === 'power') { ST.powerPick[ST.sel.settings] = e.target.value; render(); } });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.dataset && e.target.dataset.edit) { e.preventDefault(); startEdit(e.target); return; }
   const t = e.target, typing = /INPUT|TEXTAREA|SELECT/.test(t.tagName || '');
