@@ -22,7 +22,7 @@ const art = k => D.articles.find(a => a.key === k);
 const A = (k, qty, over = {}) => { const a = art(k); return { desc: a.desc, qty, unit: a.unit, cost: a.cost, margin: a.margin, supplier: a.supplier || 'Own team', ...over }; };
 const STEPS = D.journey;
 Object.values(D.quotes).forEach(q => { q.project_info.desc = clean(q.project_info.desc); });
-const URGENT = ['Overdue', 'Supplier late', 'Needs a person', 'Late', 'Conflict', 'At risk', 'No reply 14 d+'];
+const URGENT = ["Couldn't read", 'Overdue', 'Supplier late', 'Needs a person', 'Late', 'Conflict', 'At risk', 'No reply 14 d+'];
 const BAD = ['Overdue', 'Conflict'];
 const KEEP = ['set by owner', 'undone', 'To invoice', 'New'];
 
@@ -38,6 +38,9 @@ const MAILS = {
   d1: { from: 'Paul Terlouw, Wallsz', subject: 'RE: Politie KPLD, deur 2.14 erbij', date: '19 Nov', agent: 'Revision R2 made', body: 'Beste Arjan,\n\nWe hebben toch een extra deur nodig op de begane grond (2.14), zelfde uitvoering als de rest.\nKunnen jullie de offerte aanpassen?\n\nMet vriendelijke groet,\nPaul Terlouw\nWallsz' },
   d3: { from: 'Glas Centrum Nederland', subject: 'Leverdatum I2611-001-1', date: '21 Nov', agent: 'Supplier late', body: 'Beste klant,\n\nDoor drukte in de productie verschuift de levering van order I2611-001-1 naar 2 december.\n\nMet vriendelijke groet,\nPlanning' },
   d4: { from: 'Marloes de Graaf', subject: 'Klacht: kras op deurblad', date: '22 Nov', files: ['foto-deur-kamer3.jpg'], agent: 'Complaint, stopped', body: 'Hoi Arjan,\n\nBij de oplevering zagen we een flinke kras op het deurblad van kamer 3. Foto in de bijlage. Hoe lossen we dit op?\n\nGroet,\nMarloes' },
+  d9: { from: 'Ruben Aalbers, Bentacera', subject: 'Zie bijlage', date: 'today 09:12', files: ['Scan_0412.pdf'], agent: "Couldn't read", unreadable: true, body: 'Hoi Arjan,\n\nZie bijlage.\n\nGroet,\nRuben' },
+  o1: { from: 'Glas Centrum Nederland', subject: 'Nieuw: akoestisch glas 44.2', date: 'today 08:02', agent: 'Newsletter', why: ['Sent to a mailing list', 'no question, no job number'], body: 'Beste relatie,\n\nVanaf januari leveren wij akoestisch gelaagd glas 44.2 uit voorraad. Bekijk de nieuwe prijslijst op onze website.\n\nMet vriendelijke groet,\nGlas Centrum Nederland' },
+  o2: { from: 'Exact Online', subject: 'Uw factuuroverzicht november', date: 'today 07:30', agent: 'Notice', why: ['Automatic message', 'the accountant gets the same'], body: 'Uw factuuroverzicht over november staat klaar in Exact Online.\n\nDit is een automatisch bericht.' },
   d2: { from: 'Bouwbedrijf Hoekstra', subject: 'Aanvraag school wing B', date: '21 Nov', agent: 'Project made', body: 'Goedemiddag,\n\nVoor school wing B in Amersfoort zoeken wij een prijs voor circa 60 m1 glazen systeemwand en 12 deuren. Tekening volgt.\n\nGroet,\nAfdeling inkoop', handled: 'Agent made project P2611-011 and drafted 2 questions (ceiling height, glass type).' },
   d6: { from: 'Paul Terlouw, Wallsz', subject: 'Aanvraag Politie KPLD', date: '18 Nov', agent: 'Calculation made', body: 'Beste Arjan,\n\nGraag een offerte voor systeemwanden, 8 kozijnen en deuren voor het politiebureau in Driebergen. Tekening en deurstaat in de bijlage.\n\nMet vriendelijke groet,\nPaul Terlouw\nWallsz', handled: 'Agent made project P2611-009 and drafted calculation C2611-009.' },
 };
@@ -46,7 +49,7 @@ const MAILS = {
 const ST = { sel: {}, doors: null, folie: '', saveArt: true, toast: null, done: {}, calcMade: false, quoteSent: false, order: null, pos: [], relFilter: 'All', mine: [], projQ: '', moreToday: false, relQ: '', artQ: '',
   allIn: false, delivered: false, finalSent: false, signer: 'Marloes de Graaf',
   week: { 'V2611-001': 50 }, rem: { 'F2610-004': 1 }, plan: { pl1: 'In production', pl2: 'Waits for quote', pl3: 'Waits for quote' }, activity: D.activity.map(a => a.slice()),
-  powerPick: {}, ce: {}, req: {}, planWeek: { pl2: 52, pl3: 11 }, delWin: '', pc: {}, q: {}, sort: {}, warnOnly: {}, pop: null, modal: null, box: 'inbox', sent: [], fresh: [], read: {}, phone: {}, catOf: {}, projCat: 'All', openWeek: null, showClosed: false, photo: '',
+  powerPick: {}, archived: {}, notWork: {}, isWork: {}, showOther: false, choice9: null, ce: {}, req: {}, planWeek: { pl2: 52, pl3: 11 }, delWin: '', pc: {}, q: {}, sort: {}, warnOnly: {}, pop: null, modal: null, box: 'inbox', sent: [], fresh: [], read: {}, phone: {}, catOf: {}, projCat: 'All', openWeek: null, showClosed: false, photo: '',
   power: { Quotes: 'Always ask', 'Customer replies': 'Ask me first', 'Supplier chases': 'Do it alone, show in log', 'Payment reminders': 'Do it alone, show in log' } };
 
 const Q = D.quotes;
@@ -79,6 +82,7 @@ const ITEMS = [
   { id: 'd4', group: 'needs', mail: 'd4', since: 22, short: 'De Graaf complaint', text: 'De Graaf | complaint: scratch on a door, reply drafted', tag: 'Needs a person' },
   { id: 'd7', group: 'needs', mail: 'd7', since: 23, short: 'De Graaf request', text: 'De Graaf | new request: 12 m glass wall, 4 or 5 doors?', tag: 'New request' },
   { id: 'd8', group: 'needs', mail: 'd8', since: 23, short: 'Hoekstra order', text: 'Hoekstra | accepts the quote with 2 extra doors | O2611-007', tag: 'Customer reply' },
+  { id: 'd9', group: 'needs', mail: 'd9', since: 23, short: 'Bentacera scan', text: "Bentacera | the agent couldn't read the attachment: a scanned page", tag: "Couldn't read" },
   { id: 'fin', group: 'due', short: 'De Graaf final invoice', text: 'De Graaf | delivered: final invoice 70 % is ready | V2611-002', tag: 'To invoice', when: () => ST.delivered && !ST.finalSent },
   { id: 'F2610-004', group: 'due', short: 'Wallsz invoice', text: 'Wallsz | invoice 13 days overdue, reminder 1 sent | F2610-004', tag: 'Overdue' },
   { id: 'I2611-002-2', group: 'due', short: 'Metaalwerk purchase', text: 'Metaalwerk Veenendaal | frames arrive 2 Dec | I2611-002-2', tag: 'Purchase' },
@@ -162,6 +166,12 @@ Arjan</textarea></label>`,
       + p.lines.map(l => kv(esc(l.desc), l.qty + ' ' + l.unit)).join('') + kv('Arrives', '2 Dec'),
       label: ST.allIn ? 'Received 2 Dec' : 'Mark as received', enabled: !ST.allIn, hint: ST.allIn ? '' : 'When the frames are in. The delivery check then opens.',
       run: () => { ST.allIn = true; ST.done[id] = true; toast('Frames received, De Graaf can be delivered', () => { ST.allIn = false; delete ST.done[id]; }); } }; }
+  if (id === 'd9') { const c = ST.choice9;
+    return { facts: head("Bentacera: the agent couldn't read this", 'The mail only says "Zie bijlage". The attachment is a scanned page with no text in it.') + kv('From', 'Ruben Aalbers', 'Bentacera, customer') + kv('Open job', 'Healthcare, order V2611-001', 'glass late, week 51') + (here ? '' : '<a class="link" href="#/inbox" data-do="openmail" data-v="d9">Open the mail and the scan</a>'),
+      decide: `<div class="ask">What is this mail?${seg('d9', [['job', 'About order V2611-001'], ['new', 'A new request'], ['notwork', 'Not work']], c)}</div>`,
+      label: c === 'job' ? 'Link to order V2611-001' : c === 'new' ? 'Make a request from it' : c === 'notwork' ? 'Move to Other mail' : 'Pick what this is first', enabled: !!c,
+      hint: c === 'job' ? 'The scan is saved with the order. You read it there.' : c === 'new' ? 'Opens a request; you type what the scan says.' : c === 'notwork' ? 'The agent learns from this.' : '', focus: c ? '#anchor' : '[data-do=d9]',
+      run: () => { ST.done.d9 = true; if (c === 'notwork') ST.notWork.d9 = true; toast(c === 'job' ? 'Scan linked to order V2611-001' : c === 'new' ? 'Request P2611-014 made from the scan' : 'Moved to Other mail', () => { delete ST.done.d9; delete ST.notWork.d9; }); } }; }
   if (id === 'fin') { const dep = D.invoices.find(i => i.id === 'F2611-002-1');
     return { facts: head('De Graaf: final invoice F2611-002-2', 'Order V2611-002, delivered, signed by ' + esc(ST.signer || 'Marloes de Graaf'))
       + kv('70 % incl. VAT', eur(finalAmount())) + kv('Deposit 30 %, F2611-002-1', eur(invTotal(dep)), 'due ' + day(dep.due)) + kv('Payment', '70 % on delivery'),
@@ -194,23 +204,31 @@ V.today = () => {
   const sel = pick('today', [...needs, ...due].map(i => i.id));
   return { work: `<h1>Today</h1><p class="sub">Monday 23 Nov</p>
     <a class="agentline" href="#/activity">The agent did ${ST.activity.length + 7} things since Friday. See all ${ST.activity.length + 7}</a>
-    ${tools('today')}<div class="lab">Needs you <span class="count">${needs.length}</span></div><div class="rows" role="listbox">${(ST.moreToday ? needs : needs.slice(0, 5)).map(i => row('today', i.id, i.text, i.tag, waiting(i), URGENT.includes(i.tag))).join('') || '<p class="empty">Nothing needs you. The agent handles the routine.</p>'}${needs.length > 5 && !ST.moreToday ? `<a href="#" class="row" data-do="moretoday"><span>Show ${needs.length - 5} more</span></a>` : ''}</div>
+    ${tools('today')}<div class="lab">Needs you <span class="count">${needs.length}</span></div><div class="rows" role="listbox">${(ST.moreToday ? needs : needs.slice(0, 6)).map(i => row('today', i.id, i.text, i.tag, waiting(i), URGENT.includes(i.tag))).join('') || '<p class="empty">Nothing needs you. The agent handles the routine.</p>'}${needs.length > 6 && !ST.moreToday ? `<a href="#" class="row" data-do="moretoday"><span>Show ${needs.length - 6} more</span></a>` : ''}</div>
     <div class="lab">Due today <span class="count">${due.length}</span></div><div class="rows" role="listbox">${due.map(i => row('today', i.id, i.text, i.tag, '', URGENT.includes(i.tag))).join('') || '<p class="empty">Nothing due.</p>'}</div>`,
     rail: railFor(sel), list: 'today' };
 };
-const mailRow = (id, sel) => { const m = MAILS[id]; return `<div class="row two${ST.fresh.includes(id) && !ST.read[id] ? ' unread' : ''}" data-sel="inbox" data-id="${id}" data-name="${esc(m.from)}" aria-selected="${sel === id}" role="option" tabindex="-1"><span class="three"><b>${esc(m.from.split(', ')[0])}</b><span>${esc(m.agent)}</span><small>${esc(m.subject)}</small></span><span class="meta">${m.date}</span></div>`; };
+const mailRow = (id, sel) => { const m = MAILS[id]; return `<div class="row two${ST.fresh.includes(id) && !ST.read[id] ? ' unread' : ''}" data-sel="inbox" data-id="${id}" data-name="${esc(m.from)}" aria-selected="${sel === id}" role="option" tabindex="-1"><span class="three"><b>${esc(m.from.split(', ')[0])}</b><span>${m.unreadable && !ST.done[id] ? tagHtml(m.agent) : esc(m.agent)}</span><small>${esc(m.subject)}</small></span><span class="meta">${m.date}</span></div>`; };
 const sentRow = (x, i, sel) => `<div class="row two" data-sel="sent" data-id="s${i}" data-name="${esc(x.to)}" aria-selected="${sel === 's' + i}" role="option" tabindex="-1"><span class="three"><b>To ${esc(x.to)}</b><span>${esc(x.subject)}</span>${x.files ? `<small>${esc(x.files.join(', '))}</small>` : ''}</span><span class="meta">${x.at}</span></div>`;
 V.inbox = () => {
   if (ST.box === 'sent') return sentBox();
-  const needMails = [...ST.fresh.filter(id => !ST.done[id]), ...ITEMS.filter(i => i.mail && !ST.done[i.id]).sort((a, b) => a.since - b.since).map(i => i.mail)];
-  const handled = [...ST.fresh.filter(id => ST.done[id]), 'd2', 'd6', ...ITEMS.filter(i => i.mail && ST.done[i.id]).map(i => i.mail)];
-  const sel = pick('inbox', [...needMails, ...handled]), m = MAILS[sel], item = ITEMS.find(i => i.mail === sel); ST.read[sel] = true;
+  const live = id => !ST.archived[id];
+  const isOther = id => (ST.notWork[id] || ['o1', 'o2'].includes(id)) && !ST.isWork[id];
+  const needMails = [...ST.fresh.filter(id => !ST.done[id]), ...['o1', 'o2'].filter(id => ST.isWork[id] && !ST.done[id]), ...ITEMS.filter(i => i.mail && !ST.done[i.id]).sort((a, b) => a.since - b.since).map(i => i.mail)].filter(id => live(id) && !isOther(id));
+  const handled = [...ST.fresh.filter(id => ST.done[id]), 'd2', 'd6', ...['o1', 'o2'].filter(id => ST.isWork[id] && ST.done[id]), ...ITEMS.filter(i => i.mail && ST.done[i.id]).map(i => i.mail)].filter(id => live(id) && !isOther(id));
+  const other = [...new Set([...['o1', 'o2'], ...Object.keys(ST.notWork)])].filter(id => live(id) && isOther(id));
+  const all = [...needMails, ...handled, ...other];
+  const sel = pick('inbox', ST.showOther ? all : [...needMails, ...handled, ...(other.includes(ST.sel.inbox) ? [ST.sel.inbox] : [])]), m = MAILS[sel], item = ITEMS.find(i => i.mail === sel); ST.read[sel] = true;
+  const selOther = other.includes(sel);
+  const acts = `<div class="mailacts">${selOther ? `<button class="btn2" data-do="mailact" data-v="work" data-id="${sel}">${ic('check')}This is work</button>` : `<button class="btn2" data-do="mailact" data-v="archive" data-id="${sel}">${ic('check')}Archive</button><button class="btn2" data-do="mailact" data-v="notwork" data-id="${sel}">${ic('x')}Not work</button>`}<a class="btn2" href="https://mail.google.com/mail/u/0/#search/${encodeURIComponent(m.subject)}" target="_blank" rel="noopener">${ic('send')}Open in Gmail</a></div>`;
   /* No box around the list: list and mail are two full-height columns split by one line */
-  return { full: true, work: `<div class="titlebar"><h1>Inbox</h1><button class="btn2" data-do="modal" data-v="compose">${ic('plus')}New mail</button></div>${boxTabs()}${tools('inbox')}<div class="mailsplit"><div class="maillist">
+  return { full: true, work: `<div class="titlebar"><h1>Inbox</h1><button class="btn2" data-do="modal" data-v="compose">${ic('plus')}New mail</button></div><p class="sub">${all.length + Object.keys(ST.archived).length} mails: ${needMails.length} need you, ${handled.length} handled by the agent, ${other.length} other${Object.keys(ST.archived).length ? `, ${Object.keys(ST.archived).length} archived` : ''}. Nothing is hidden.</p>${boxTabs()}${tools('inbox')}<div class="mailsplit"><div class="maillist">
     <div class="lab">Needs you <span class="count">${needMails.length}</span></div><div class="rows">${needMails.map(id => mailRow(id, sel)).join('')}</div>
-    <div class="lab">Handled by the agent <span class="count">${handled.length}</span></div><div class="rows">${handled.map(id => mailRow(id, sel)).join('')}</div></div>
-    <article class="mail mailread"><h2>${esc(m.subject)}</h2><p class="sub">${esc(m.from)}, ${m.date}</p><pre>${esc(m.body)}</pre>${(m.files || []).map(f => `<span class="chip">${ic('attach')}${esc(f)}</span>`).join('')}</article></div>`,
-    rail: ST.fresh.includes(sel) && !ST.done[sel] ? freshRail(sel) : item && !ST.done[item.id] ? railFor(item.id) : { facts: head(ST.done[sel] && ST.fresh.includes(sel) ? 'Answered' : 'Handled by the agent', esc(m.handled || 'Done.')), ...toNext() }, list: 'inbox' };
+    <div class="lab">Handled by the agent <span class="count">${handled.length}</span></div><div class="rows">${handled.map(id => mailRow(id, sel)).join('')}</div>
+    ${other.length ? (ST.showOther ? `<div class="lab">Other mail <span class="count">${other.length}</span></div><div class="rows">${other.map(id => mailRow(id, sel)).join('')}</div><p class="state"><a href="#" data-do="showother">Hide other mail</a></p>` : `<p class="state"><a href="#" data-do="showother">Other mail ${other.length}: show</a></p>`) : ''}</div>
+    <article class="mail mailread">${acts}<h2>${esc(m.subject)}</h2><p class="sub">${esc(m.from)}, ${m.date}</p><pre>${esc(m.body)}</pre>${(m.files || []).map(f => m.unreadable ? `<div class="scan">${ic('attach')}<span><b>${esc(f)}</b><small>1 page, scanned. No text the agent can read.</small></span></div>` : `<span class="chip">${ic('attach')}${esc(f)}</span>`).join('')}</article></div>`,
+    rail: selOther ? { facts: head(esc(m.from) + ': ' + esc(m.agent.toLowerCase()), 'The agent put this under Other mail: it asks nothing and is not about a job.') + (m.why ? kv('Why', m.why[0], m.why[1]) : ''), label: 'Archive', enabled: true, hint: 'Wrong? "This is work" moves it to Needs you and the agent learns from it.', run: () => { ST.archived[sel] = true; toast('Archived: ' + m.subject, () => { delete ST.archived[sel]; }); } }
+    : ST.fresh.includes(sel) && !ST.done[sel] ? freshRail(sel) : item && !ST.done[item.id] ? railFor(item.id) : { facts: head(ST.done[sel] && ST.fresh.includes(sel) ? 'Answered' : 'Handled by the agent', esc(m.handled || 'Done.')), ...toNext() }, list: 'inbox' };
 };
 V.request = () => ({ work: `${back}<h1>De Graaf: Kantoorverdieping Utrecht</h1><p class="sub">Request P2611-013, from mail 23 Nov</p>${stepper(0)}
   <div class="split" style="grid-template-columns:1fr 1fr;gap:32px"><article class="mail"><h2>What they ask</h2>
@@ -737,6 +755,14 @@ document.addEventListener('click', e => {
     if (d.dataset.do === 'box') { ST.box = v; render(); }
     if (d.dataset.do === 'setcat') { ST.modalCat = v; render(); }
     if (d.dataset.do === 'save') { saveModal(); render(); }
+    if (d.dataset.do === 'd9') { ST.choice9 = v; render(); }
+    if (d.dataset.do === 'showother') { ST.showOther = !ST.showOther; render(); }
+    if (d.dataset.do === 'openmail') { ST.box = 'inbox'; ST.sel.inbox = v; go('#/inbox'); }
+    if (d.dataset.do === 'mailact') { const id = d.dataset.id, subj = (MAILS[id] || {}).subject || '';
+      if (v === 'archive') { ST.archived[id] = true; toast('Archived: ' + subj, () => { delete ST.archived[id]; }); }
+      if (v === 'notwork') { ST.notWork[id] = true; delete ST.isWork[id]; toast('Moved to Other mail. The agent learns from this.', () => { delete ST.notWork[id]; }); }
+      if (v === 'work') { ST.isWork[id] = true; delete ST.notWork[id]; toast('Moved to Needs you. The agent learns from this.', () => { delete ST.isWork[id]; }); }
+      ST.sel.inbox = null; render(); }
     if (d.dataset.do === 'opennew') { ST.box = 'inbox'; ST.sel.inbox = v; ST.notice = null; go('#/inbox'); }
     if (d.dataset.do === 'undo' && ST.toast) { ST.toast.undo(); ST.toast = null; render(); }
     return; }
