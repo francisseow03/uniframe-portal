@@ -207,3 +207,9 @@ button.who { padding: 0; }
 .tabs button[aria-pressed=true] { padding: 0 15px; }
 .railbtn { padding: 4px; }
 .search input, .gs input, .inlist input { padding: 0; }
+
+/* click-to-type values: a light dashed line says "you can change this"; hover and focus show the field shape */
+.ed { cursor: text; border-bottom: 1px dashed var(--ice-dark); padding: 0 2px; }
+.ed:hover, .ed:focus-visible { background: #EEF9FB; outline: 1px solid var(--ice); outline-offset: 2px; border-radius: 0 0 6px 0; }
+.inl { font: inherit; color: var(--ink); text-align: inherit; height: 32px; padding: 0 8px; margin: -6px -8px; border: 1px solid var(--action); border-radius: 0 0 6px 0; background: var(--white); outline: 2px solid var(--ice-dark); outline-offset: 1px; }
+td.num .inl { text-align: right; }

@@ -46,7 +46,7 @@ const MAILS = {
 const ST = { sel: {}, doors: null, folie: '', saveArt: true, toast: null, done: {}, calcMade: false, quoteSent: false, order: null, pos: [], relFilter: 'All', mine: [], projQ: '', moreToday: false, relQ: '', artQ: '',
   allIn: false, delivered: false, finalSent: false, signer: 'Marloes de Graaf',
   week: { 'V2611-001': 50 }, rem: { 'F2610-004': 1 }, plan: { pl1: 'In production', pl2: 'Waits for quote', pl3: 'Waits for quote' }, activity: D.activity.map(a => a.slice()),
-  q: {}, sort: {}, warnOnly: {}, pop: null, modal: null, box: 'inbox', sent: [], fresh: [], read: {}, phone: {}, catOf: {}, projCat: 'All', openWeek: null, showClosed: false, photo: '',
+  ce: {}, req: {}, planWeek: { pl2: 52, pl3: 11 }, delWin: '', pc: {}, q: {}, sort: {}, warnOnly: {}, pop: null, modal: null, box: 'inbox', sent: [], fresh: [], read: {}, phone: {}, catOf: {}, projCat: 'All', openWeek: null, showClosed: false, photo: '',
   power: { Quotes: 'Always ask', 'Customer replies': 'Ask me first', 'Supplier chases': 'Do it alone, show in log', 'Payment reminders': 'Do it alone, show in log' } };
 
 const Q = D.quotes;
@@ -56,7 +56,7 @@ const isOverdue = i => i.status === 'Sent' && i.due < '2026-11-23' && !ST.done[i
 const relOf = name => D.relations.find(r => r.name === name) || {};
 const finalAmount = () => total(Q['O2611-002']) * 1.21 * 0.7;   /* order V2611-002: 30 % at order, 70 % on delivery */
 
-function calcDeGraaf() {
+function calcBase() {
   const n = ST.doors || 4, f = parseFloat(String(ST.folie).replace(',', '.'));
   return { id: 'C2611-013', chapters: [
     { title: 'Systeemwanden', lines: [A('wall', 12)] },
@@ -64,6 +64,7 @@ function calcDeGraaf() {
     { title: 'Folie', lines: [{ desc: 'Matte folie, band op ooghoogte', qty: 12, unit: 'm1', cost: isNaN(f) ? 0 : f, margin: 20, supplier: 'Own team', missing: isNaN(f) || f <= 0 }] },
     { title: 'Montage en transport', lines: [A('install', Math.round(12 * 1.2 + n * 2)), A('transport', 1)] }] };
 }
+function calcDeGraaf() { const c = calcBase(); c.chapters.forEach((ch, ci) => ch.lines.forEach((l, li) => { const o = ST.ce[ci + '.' + li]; if (o) Object.assign(l, o); })); return c; }
 function orderHoekstra() {
   return { id: 'V2611-007', project: 'P2611-007', quote: 'O2611-007', customer: 'Bouwbedrijf Hoekstra', name: 'Sports hall', chapters: [
     { title: 'Systeemwanden', lines: [A('wall', 40)] },
@@ -181,10 +182,12 @@ const rowText = (text, tag, noCode) => { const p = String(text).split(' | '); co
   return [`<span class="two"><span class="nl"><b title="${esc(p[0])}">${esc(p[0])}</b>${tagHtml(tag)}</span>${what ? `<span title="${esc(what)}">${esc(what.charAt(0).toUpperCase() + what.slice(1))}</span>` : ''}</span>`, code && !noCode ? `<span class="code">${esc(code)}</span>` : '']; };
 const row = (list, id, text, tag, meta = '', warn = false, cat = '') => { const [main, code] = rowText(text, tag, list === 'today'); return `<div class="row${warn ? ' warn' : ''}" data-sel="${list}" data-id="${id}" data-name="${esc(String(text).split(' | ')[0])}" aria-selected="${ST.sel[list] === id}" role="option" tabindex="-1">${main}${cat ? `<span class="cat">${esc(cat)}</span>` : ''}${code}${meta ? `<span class="meta" title="${esc(meta)}">${esc(meta)}</span>` : ''}</div>`; };
 const pick = (list, ids) => { if (!ids.includes(ST.sel[list])) ST.sel[list] = ids[0]; return ST.sel[list]; };
-const linesTable = q => `<table><thead><tr><th>Nr</th><th>Line</th><th class="num">Quantity</th><th class="num">Cost</th><th class="num">Margin</th><th class="num">Total</th></tr></thead><tbody>
-  ${q.chapters.map((c, ci) => c.lines.map((l, li) => `<tr class="${l.missing ? 'missing' : ''}"><td>${ci + 1}.${li + 1}</td><td>${esc(l.desc)}${l.missing ? ': no price yet' : ''}${l.note ? ` <span class="tag">${esc(l.note)}</span>` : ''}</td>
-    <td class="num">${l.qty} ${l.unit}</td><td class="num">${l.missing ? '–' : eur(l.cost)}</td><td class="num">${l.margin} %</td><td class="num">${l.missing ? '–' : eur(l.qty * sale(l))}</td></tr>`).join('')).join('')}</tbody></table>`;
+const linesTable = (q, edit) => `<table><thead><tr><th>Nr</th><th>Line</th><th class="num">Quantity</th><th class="num">Cost</th><th class="num">Margin</th><th class="num">Total</th></tr></thead><tbody>
+  ${q.chapters.map((c, ci) => c.lines.map((l, li) => `<tr class="${l.missing ? 'missing' : ST.ce[ci + '.' + li] ? 'chg' : ''}"><td>${ci + 1}.${li + 1}</td><td>${esc(l.desc)}${l.missing ? ': no price yet' : ''}${l.note ? ` <span class="tag">${esc(l.note)}</span>` : ''}</td>
+    <td class="num">${edit ? ed(`calc|${ci}|${li}|qty`, l.qty) : l.qty} ${l.unit}</td><td class="num">${edit ? ed(`calc|${ci}|${li}|cost`, l.missing ? '' : l.cost.toFixed(2), l.missing ? 'Add price' : eur(l.cost)) : l.missing ? '–' : eur(l.cost)}</td><td class="num">${edit ? ed(`calc|${ci}|${li}|margin`, l.margin, l.margin + ' %') : l.margin + ' %'}</td><td class="num">${l.missing ? '–' : eur(l.qty * sale(l))}</td></tr>`).join('')).join('')}</tbody></table>`;
 
+/* click-to-type: any value with data-edit opens a field in place; Enter saves, Esc cancels, Tab goes to the next */
+const ed = (key, val, shown) => `<span class="ed" data-edit="${esc(key)}" data-val="${esc(val)}" tabindex="0" title="Click to change">${shown === undefined ? esc(val) : shown}</span>`;
 const V = {};
 V.today = () => {
   const needs = open('needs'), due = open('due');
@@ -215,8 +218,8 @@ V.request = () => ({ work: `${back}<h1>De Graaf: Kantoorverdieping Utrecht</h1><
     <span class="chip">plattegrond.pdf</span><span class="chip">deurstaat.pdf</span>
     <p style="margin:8px 0 0"><a href="#" class="readmore" data-do="original">${ST.showOriginal ? 'Hide original mail' : 'Read original mail'}</a></p>
     ${ST.showOriginal ? `<pre class="original">${esc(MAILS.d7.body)}</pre>` : ''}</article>
-  <div><div class="lab">What the agent read <span class="count">9</span></div><div class="rows">${[['Doors', ST.doors ? ST.doors + ', you chose' : '4 or 5?', ST.doors ? '' : 'Conflict'], ['Category', catOf('P2611-013'), 'cat'], ['Customer', 'De Graaf Interieurbouw'], ['Contact', 'Marloes de Graaf'], ['Site', 'Stationsplein 4, Utrecht'], ['Wall', '12 m, h 3000 mm'], ['Glass', 'Enkel glas, 10 mm'], ['Folie', 'Matte, eye level'], ['Wanted', 'March, week 11']]
-    .map(([f, v, s]) => `<div class="row kvrow${s === 'Conflict' ? ' warn' : ''}" style="cursor:default"><span class="k">${f}</span><span class="nl"><b>${esc(v)}</b>${s === 'Conflict' ? tagHtml(s) : ''}</span>${s === 'cat' ? '<a href="#" class="readmore" data-do="modal" data-v="category" data-id="P2611-013">Set by the agent. Change</a>' : ''}</div>`).join('')}</div></div></div>`, rail: railFor('d7', true) });
+  <div><div class="lab">What the agent read <span class="count">9</span></div><div class="rows">${[['Doors', ST.doors ? ST.doors + ', you chose' : '4 or 5?', ST.doors ? '' : 'Conflict'], ['Category', catOf('P2611-013'), 'cat'], ...[['Customer', 'De Graaf Interieurbouw'], ['Contact', 'Marloes de Graaf'], ['Site', 'Stationsplein 4, Utrecht'], ['Wall', '12 m, h 3000 mm'], ['Glass', 'Enkel glas, 10 mm'], ['Folie', 'Matte, eye level'], ['Wanted', 'March, week 11']].map(([f, d]) => [f, ST.req[f] ?? d])]
+    .map(([f, v, s]) => `<div class="row kvrow${s === 'Conflict' ? ' warn' : ''}" style="cursor:default"><span class="k">${f}</span><span class="nl"><b>${s === 'cat' ? esc(v) : f === 'Doors' ? ed('req|Doors', ST.doors || '', esc(v)) : ed('req|' + f, v)}</b>${s === 'Conflict' ? tagHtml(s) : ''}</span>${s === 'cat' ? '<a href="#" class="readmore" data-do="modal" data-v="category" data-id="P2611-013">Set by the agent. Change</a>' : ''}</div>`).join('')}</div></div></div>`, rail: railFor('d7', true) });
 
 /* ---------- lists: every job and every quote, found by name or by the shared job number ---------- */
 const shortName = c => c.replace(' Interieurbouw', '').replace('Bouwbedrijf ', '');
@@ -250,7 +253,7 @@ function projectsList() {
     ${closed.length ? `<p class="state"><a href="#" data-do="showclosed">Closed ${closed.length}: ${ST.showClosed ? 'hide' : 'show'}</a></p>${ST.showClosed ? `<div class="rows">${closed.map(line).join('')}</div>` : ''}` : ''}`;
   if (!cur) return { work, rail: { facts: '<p class="empty">No match. Try a job number like 2611-002 or a customer name.</p>', label: 'Nothing to open', enabled: false }, list: 'projects' };
   const p = cur.p;
-  return { work, rail: { facts: head(`${esc(shortName(p.customer))}: ${esc(p.name)}`, `Job ${baseOf(p.id)}, ${esc(p.site)}`) + kv('Stage', esc(cur.s.stage)) + kv('Category', catOf(p.id), '<a href="#" class="readmore" data-do="modal" data-v="category" data-id="' + p.id + '">Set by the agent. Change</a>') + kv('Contact', esc(p.contact), esc(p.email)),
+  return { work, rail: { facts: head(`${esc(shortName(p.customer))}: ${esc(p.name)}`, `Job ${baseOf(p.id)}, ${esc(p.site)}`) + kv('Stage', esc(cur.s.stage)) + kv('Category', catOf(p.id), '<a href="#" class="readmore" data-do="modal" data-v="category" data-id="' + p.id + '">Set by the agent. Change</a>') + kv('Contact', ed('pc|' + p.id + '|contact', (ST.pc[p.id] || {}).contact || p.contact), ed('pc|' + p.id + '|email', (ST.pc[p.id] || {}).email || p.email)),
     label: 'Open the job', enabled: !!cur.s.go, hint: '', run: () => cur.s.go() }, list: 'projects' };
 }
 function quotesList() {
@@ -275,7 +278,7 @@ const money = (c, missing) => { const t = total(c), cost = costOf(c), plus = mis
     + kv('Cost', eur(cost) + plus) + kv('Margin', `${eur(t - cost)}, ${(t ? (t - cost) / t * 100 : 0).toFixed(1)} %`, missing ? 'priced lines only' : ''); };
 V.calc = () => {
   const c = calcDeGraaf(), missing = flat(c).filter(l => l.missing).length;
-  return { work: `${back}<h1>De Graaf: Kantoorverdieping</h1><p class="sub">Calculation C2611-013, R1, ${ST.doors || 4} doors</p>${stepper(1, { 0: '#/request/P2611-013' })}${linesTable(c)}`,
+  return { work: `${back}<h1>De Graaf: Kantoorverdieping</h1><p class="sub">Calculation C2611-013, R1, ${ST.doors || 4} doors</p>${stepper(1, { 0: '#/request/P2611-013' })}${linesTable(c, true)}`,
     /* The money in plain lines (no boxes): cost, margin, VAT, totals. Until the folie has a price,
        the lines say "+ folie" and the margin is for the priced lines only. */
     rail: { facts: head('De Graaf: calculation', `<span data-live="final">${missing ? 'Not final: the folie has no price yet' : 'Priced from Articles'}</span>`) + money(c, missing),
@@ -295,7 +298,7 @@ V.quote = id => {
   const noAddr = q.client.address === 'Onbekend';
   const doc = `<div class="doc"><div class="head"><div><b>Uniframe Systems</b><br>Terborg</div><div style="text-align:right"><b>Offerte ${esc(q.id)}</b><br>${day(q.date)}, geldig tot ${day(q.valid)}</div></div>
     <div>${esc(q.client.company)}<br>${esc(q.client.attn)}<br>${noAddr ? '<mark class="gap">Address missing</mark>' : esc(q.client.address)}</div><p>Project: ${esc(q.project_info.desc)}, ${esc(q.project_info.delivery)}</p>
-    ${q.chapters.map(c => `<h3>${esc(c.title)}</h3><table>${c.lines.map(l => `<tr class="${changed(l) || (l.hint && !l.cost) ? 'chg' : ''}"><td>${esc(l.desc)}${changed(l) ? ` <span class="tag">${changed(l)}</span>` : ''}${l.hint && !l.cost ? ' <span class="tag urgent">no price</span>' : ''}</td><td class="num">${l.qty} ${l.unit}</td><td class="num">${eur(l.qty * sale(l))}</td></tr>`).join('')}</table>`).join('')}
+    ${q.chapters.map(c => `<h3>${esc(c.title)}</h3><table>${c.lines.map(l => `<tr class="${changed(l) || (l.hint && !l.cost) ? 'chg' : ''}"><td>${esc(l.desc)}${changed(l) ? ` <span class="tag">${changed(l)}</span>` : ''}${l.hint && !l.cost ? ' <span class="tag urgent">no price</span>' : ''}</td><td class="num">${!sent ? ed(mine ? `calc|${q.chapters.indexOf(c)}|${c.lines.indexOf(l)}|qty` : `q|${id}|${q.chapters.indexOf(c)}|${c.lines.indexOf(l)}|qty`, l.qty) : l.qty} ${l.unit}</td><td class="num">${eur(l.qty * sale(l))}</td></tr>`).join('')}</table>`).join('')}
     <table style="margin-top:14px"><tr class="total"><td>Totaal excl. btw</td><td class="num">${eur(total(q))}</td></tr><tr><td>Btw 21 %</td><td class="num">${eur(total(q) * .21)}</td></tr><tr class="total"><td>Totaal incl. btw</td><td class="num">${eur(total(q) * 1.21)}</td></tr></table></div>`;
   const to = mine ? 'Marloes de Graaf <marloes@degraaf-interieur.nl>' : `${q.client.attn} <${q.client.email}>`;
   const hello = mine ? 'Beste Marloes,' : (q.client.salutation || '').split(',').slice(-2, -1)[0]?.trim() + ',';
@@ -318,7 +321,7 @@ V.order = () => {
   const sup = {}; flat(o).filter(l => l.supplier !== 'Own team').forEach(l => (sup[l.supplier] = sup[l.supplier] || []).push(l));
   const load = { 5: 85, 6: 55, 7: 40 };
   return { work: `${back}<h1>Hoekstra: ${o.name}</h1><p class="sub">Order ${o.id}, from quote ${o.quote} + 2 doors</p>${stepper(3, { 2: '#/quote/' + o.quote })}
-    <table><thead><tr><th>Line</th><th class="num">Qty</th><th>Supplier</th></tr></thead><tbody>${flat(o).map(l => `<tr class="${l.supplier === 'Own team' ? 'own' : ''}"><td>${esc(l.desc)}${l.note ? ` <span class="tag">${l.note}</span>` : ''}</td><td class="num">${l.qty} ${l.unit}</td><td>${l.supplier === 'Own team' ? 'Own team, no order' : esc(l.supplier)}</td></tr>`).join('')}</tbody></table>
+    <table><thead><tr><th>Line</th><th class="num">Quantity</th><th>Supplier</th></tr></thead><tbody>${flat(o).map((l, i) => `<tr class="${l.supplier === 'Own team' ? 'own' : ''}"><td>${esc(l.desc)}${l.note ? ` <span class="tag">${l.note}</span>` : ''}</td><td class="num">${placed ? l.qty : ed(`ord|${i}|qty`, l.qty)} ${l.unit}</td><td>${l.supplier === 'Own team' ? 'Own team, no order' : placed ? esc(l.supplier) : ed(`ord|${i}|supplier`, l.supplier)}</td></tr>`).join('')}</tbody></table>
     <div class="lab">Notes from the customer</div><p style="margin:0">"Start februari" and "graag 2 deuren extra" <small>(phone 28 Oct, mail 23 Nov)</small></p>`,
     rail: placed ? { facts: head('Hoekstra: ordered', 'The agent chases late suppliers and logs it.') + Object.keys(sup).map(s => kv(esc(s), 'sent')).join(''), ...toNext() } : {
       facts: head('Hoekstra: supplier orders', Object.keys(sup).length + ' mails, one per supplier') + Object.entries(sup).map(([s, ls]) => kv(esc(s), ls.map(l => l.qty + ' ' + l.unit).join(', '), D.supplierMail[s])).join(''),
@@ -361,13 +364,13 @@ V.purchasing = () => {
 };
 V.planning = () => {
   const moved = ST.week['V2611-001'] === 51;
-  const lines = [{ id: 'pl1', who: 'Bentacera', desc: 'Systeemwand dicht 16 m1', ref: 'V2611-001', week: ST.week['V2611-001'], risk: moved ? 'moved to week 51' : 'glass late: week 51?' }, { id: 'pl2', who: 'Wallsz', desc: 'Systeemwand dicht 28 m1', ref: 'O2611-009, if accepted', week: 52 }, { id: 'pl3', who: 'De Graaf', desc: 'Matte folie 12 m1', ref: 'O2611-013, if accepted', week: 11 }];
+  const lines = [{ id: 'pl1', who: 'Bentacera', desc: 'Systeemwand dicht 16 m1', ref: 'V2611-001', week: ST.week['V2611-001'], risk: moved ? 'moved to week 51' : 'glass late: week 51?' }, { id: 'pl2', who: 'Wallsz', desc: 'Systeemwand dicht 28 m1', ref: 'O2611-009, if accepted', week: ST.planWeek.pl2 }, { id: 'pl3', who: 'De Graaf', desc: 'Matte folie 12 m1', ref: 'O2611-013, if accepted', week: ST.planWeek.pl3 }];
   const sel = pick('planning', lines.map(l => l.id)), L = lines.find(l => l.id === sel), s = ST.plan[sel];
   const bars = [[48, 80], [49, 55], [50, 95], [51, moved ? 70 : 45], [52, 20]];
   return { work: `<h1>Planning</h1><p class="sub">Example numbers: factory hours are not tracked yet.</p>
     <div class="lab">Load per week <small>Press a week to see its days</small></div><div class="rows weeks">${bars.map(([w, p], k) => `<button class="bar${ST.openWeek === w ? ' open' : ''}" data-do="openweek" data-v="${w}" aria-expanded="${ST.openWeek === w}">${ic(ST.openWeek === w ? 'chevD' : 'chevR')}<b>Week ${w}${k === 0 ? ', now' : ''}</b><span><i class="${p > 90 ? 'full' : ''}" style="width:${p}%"></i></span><b>${p} %${p > 90 ? ', full' : ''}</b></button>${ST.openWeek === w ? daysOf(w, p) : ''}`).join('')}</div>
     <div class="lab">Own-factory lines <span class="count">${lines.length}</span></div><div class="rows">${lines.map(l => row('planning', l.id, `${l.who} | ${l.desc} | ${l.ref}`, l.risk && !moved ? 'At risk' : ST.plan[l.id], l.risk || 'week ' + l.week, !!l.risk && !moved)).join('')}</div>`,
-    rail: { facts: head(esc(L.who) + ': ' + esc(L.desc), esc(L.ref)) + kv('Status', s) + kv('Week', String(L.week), L.risk || ''),
+    rail: { facts: head(esc(L.who) + ': ' + esc(L.desc), esc(L.ref)) + kv('Status', s) + kv('Week', ed('plan|' + L.id, L.week), L.risk || ''),
       label: s === 'Ready' ? 'Ready ✓' : s === 'Waits for quote' ? 'Starts when the quote is accepted' : 'Mark ready', enabled: s === 'In production', hint: '',
       run: () => { ST.plan[sel] = 'Ready'; toast(L.desc + ' is ready', () => { ST.plan[sel] = 'In production'; }); } }, list: 'planning' };
 };
@@ -376,7 +379,7 @@ V.delivery = () => {
   const st = l => /Stalen/.test(l.desc) ? (ST.allIn ? '✓ in, 2 Dec' : 'arrives 2 Dec, Metaalwerk') : /Montage/.test(l.desc) ? 'own team' : '✓ in';
   const missing = flat(q).filter(l => /arrives/.test(st(l))).length;
   const stepI = ST.delivered ? 5 : 4;
-  const facts3 = kv('Address', esc(p.site)) + kv('Contact', esc(p.contact), 'no phone on file') + kv('Time window and driver', 'not set', 'ask Joost', true);
+  const facts3 = kv('Address', esc(p.site)) + kv('Contact', esc(p.contact), 'no phone on file') + kv('Time window and driver', ed('del|window', ST.delWin, ST.delWin ? esc(ST.delWin) : 'Not set'), ST.delWin ? '' : 'ask Joost', !ST.delWin);
   const rail = ST.delivered ? { facts: head('De Graaf: delivered', 'Signed by ' + esc(ST.signer)) + facts3, ...toNext() }
     : missing ? { facts: head('De Graaf: 1 line still on its way', 'Steel frames arrive 2 Dec. Week 50 still fits. <a class="link" href="#/purchasing" style="margin:0">Purchase I2611-002-2</a>') + facts3,
       decide: `<p class="alt">Shipping now means a second trip on 2 Dec.</p><button class="btn2" data-do="modal" data-v="ship">Ship what is in anyway</button>`,
@@ -429,7 +432,7 @@ V.articles = () => {
   const work = `<div class="titlebar"><h1>Articles</h1><button class="btn2" data-do="modal" data-v="article">${ic('plus')}Add article</button></div><p class="sub">Prices used in every calculation</p>
     ${tools('articles')}
     <table class="arts"><thead><tr><th>Code</th><th>${sortHead('articles')}</th><th>Source</th><th>Unit</th><th class="num">Cost</th><th class="num">Margin</th></tr></thead><tbody>
-    ${list.map(x => `<tr data-sel="articles" data-id="${x.code}" data-name="${esc(x.name)}" aria-selected="${x.code === sel}" style="cursor:pointer"><td>${x.code}</td><td>${esc(x.name)}</td><td>${esc(x.supplier || x.source)}</td><td>${x.unit}</td><td class="num">${eur(x.cost)}</td><td class="num">${x.margin} %</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No match. Try the supplier or a code like SW.</td></tr>'}</tbody></table>`;
+    ${list.map(x => `<tr data-sel="articles" data-id="${x.code}" data-name="${esc(x.name)}" aria-selected="${x.code === sel}" style="cursor:pointer"><td>${x.code}</td><td>${ed(`art|${x.code}|name`, x.name)}</td><td>${esc(x.supplier || x.source)}</td><td>${ed(`art|${x.code}|unit`, x.unit)}</td><td class="num">${ed(`art|${x.code}|cost`, x.cost.toFixed(2), eur(x.cost))}</td><td class="num">${ed(`art|${x.code}|margin`, x.margin, x.margin + ' %')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No match. Try the supplier or a code like SW.</td></tr>'}</tbody></table>`;
   if (!a) return { work, rail: { facts: '<p class="empty">Nothing selected.</p>', label: 'Nothing to do', enabled: false }, list: 'articles' };
   return { work,
     rail: { facts: head(esc(a.name), `${a.code}, ${esc(a.supplier || a.source)}`) + kv('Price date', a.added ? esc(a.added) : 'not recorded yet', '', !a.added),
@@ -604,6 +607,48 @@ function daysOf(w, p) {
     return `<div class="day${pct ? '' : ' off'}"><span>${names[i]} ${d.getDate()} ${MON[d.getMonth()]}</span><span class="track"><i class="${pct >= 90 ? 'full' : ''}" style="width:${pct}%"></i></span><b>${pct ? pct + ' %' : '–'}</b><span>${esc(what)}</span></div>`; }).join('');
 }
 
+function setEdit(key, raw) {
+  const [k, ...p] = key.split('|'), txt = String(raw).trim(), num = parseFloat(txt.replace(/[€\s%]/g, '').replace(/,(\d{1,2})$/, '.$1').replace(/,/g, ''));
+  let undo = null, what = '';
+  if (k === 'calc') { const [ci, li, f] = p, l = calcBase().chapters[ci].lines[li]; if (isNaN(num) || num < 0) return;
+    if (/^Matte folie/.test(l.desc) && f === 'cost') { const old = ST.folie; ST.folie = String(num); undo = () => { ST.folie = old; }; }
+    else { const id = ci + '.' + li, old = ST.ce[id] ? { ...ST.ce[id] } : null; ST.ce[id] = { ...(ST.ce[id] || {}), [f]: num }; undo = () => { if (old) ST.ce[id] = old; else delete ST.ce[id]; }; }
+    what = l.desc.split(',')[0] + ', ' + (f === 'qty' ? 'quantity' : f) + ' ' + txt; }
+  if (k === 'q') { const [id, ci, li, f] = p, l = Q[id].chapters[ci].lines[li]; if (isNaN(num) || num < 0) return; const old = l[f]; l[f] = num; undo = () => { l[f] = old; }; what = l.desc.split(',')[0] + ', quantity ' + num; }
+  if (k === 'req') { const [f] = p;
+    if (f === 'Doors') { if (isNaN(num) || num < 1) return; const od = ST.doors; ST.doors = Math.round(num); undo = () => { ST.doors = od; }; }
+    else { if (!txt) return; const old = ST.req[f]; ST.req[f] = txt; undo = () => { if (old === undefined) delete ST.req[f]; else ST.req[f] = old; }; }
+    what = f.toLowerCase() + ' to ' + txt; }
+  if (k === 'ord') { if (!ST.order) ST.order = orderHoekstra(); const [i, f] = p, l = flat(ST.order)[+i], old = l[f];
+    if (f === 'qty') { if (isNaN(num) || num < 0) return; l.qty = num; } else { if (!txt) return; l.supplier = txt; }
+    undo = () => { l[f] = old; }; what = l.desc.split(',')[0] + ', ' + (f === 'qty' ? 'quantity ' + num : 'supplier ' + txt); }
+  if (k === 'art') { const [code, f] = p, a = D.articles.find(x => x.code === code), old = a[f];
+    if (f === 'cost' || f === 'margin') { if (isNaN(num) || num < 0) return; a[f] = num; } else { if (!txt) return; a[f] = txt; if (f === 'name') a.desc = txt; }
+    undo = () => { a[f] = old; if (f === 'name') a.desc = old; }; what = code + ', ' + f + ' ' + txt; }
+  if (k === 'plan') { const [id] = p; if (isNaN(num) || num < 1 || num > 53) return; num !== num;
+    if (id === 'pl1') { const old = ST.week['V2611-001']; ST.week['V2611-001'] = Math.round(num); undo = () => { ST.week['V2611-001'] = old; }; }
+    else { const old = ST.planWeek[id]; ST.planWeek[id] = Math.round(num); undo = () => { ST.planWeek[id] = old; }; }
+    what = 'week to ' + Math.round(num); }
+  if (k === 'del') { const old = ST.delWin; ST.delWin = txt; undo = () => { ST.delWin = old; }; what = 'time window and driver'; }
+  if (k === 'pc') { const [id, f] = p; if (!txt) return; ST.pc[id] = ST.pc[id] || {}; const old = ST.pc[id][f]; ST.pc[id][f] = txt; undo = () => { ST.pc[id][f] = old; }; what = f === 'email' ? 'e-mail' : 'contact'; }
+  if (undo) toast('Changed ' + what, undo);
+}
+function startEdit(el) {
+  if (!el || el.querySelector('input')) return;
+  const key = el.dataset.edit, w = el.getBoundingClientRect().width;
+  el.innerHTML = `<input class="inl" value="${esc(el.dataset.val)}" style="width:${Math.max(72, Math.round(w) + 28)}px" aria-label="Change value">`;
+  const i = el.querySelector('input'); i.focus(); i.select();
+  let done = false;
+  const finish = save => { if (done) return; done = true; if (save && i.value.trim() !== String(el.dataset.val)) setEdit(key, i.value); render(); };
+  i.addEventListener('keydown', ev => {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') { ev.preventDefault(); finish(true); }
+    if (ev.key === 'Escape') { ev.preventDefault(); finish(false); }
+    if (ev.key === 'Tab') { ev.preventDefault(); const all = [...document.querySelectorAll('[data-edit]')], nx = all[all.indexOf(el) + (ev.shiftKey ? -1 : 1)], nk = nx && nx.dataset.edit;
+      finish(true); if (nk) setTimeout(() => startEdit([...document.querySelectorAll('[data-edit]')].find(x => x.dataset.edit === nk)), 0); }
+  });
+  i.addEventListener('blur', () => finish(true));
+}
 /* ---------- shell ---------- */
 const NAVS = [['today', 'Today'], ['inbox', 'Inbox'], ['project', 'Projects'], ['quote', 'Quotes'], ['purchasing', 'Purchasing'], ['planning', 'Planning'], ['invoices', 'Invoices'], ['relations', 'Customers and suppliers'], ['articles', 'Articles'], ['activity', 'Activity'], ['settings', 'Settings']];
 const SHORT = { today: 'To', inbox: 'In', project: 'Pr', quote: 'Qu', purchasing: 'Pu', planning: 'Pl', invoices: 'Iv', relations: 'Cu', articles: 'Ar', activity: 'Ag', settings: 'Se' }; /* stand-ins for icons when the menu is narrow */
@@ -659,6 +704,8 @@ function liveUpdate() {
 /* search boxes re-render the page, then keep typing where you were */
 function reSearch(id) { render(); const el = $('#' + id); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }
 document.addEventListener('click', e => {
+  if (e.target.closest('input.inl')) return;
+  const edEl = e.target.closest('[data-edit]'); if (edEl) { e.preventDefault(); startEdit(edEl); return; }
   if (ST.pop && !e.target.closest('.pop, [data-do="pop"]')) { ST.pop = null; if (!e.target.closest('[data-do],[data-sel],a,button')) { render(); return; } }
   if (e.target.classList && e.target.classList.contains('scrim')) { ST.modal = null; render(); return; }
   const s = e.target.closest('[data-sel]'); if (s) { ST.sel[s.dataset.sel] = s.dataset.id; ST.toast = null; render(); return; }
@@ -707,6 +754,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => { if (e.target.id === 'photo' && e.target.files[0]) { ST.photo = e.target.files[0].name; render(); } if (e.target.id === 'saveart') { ST.saveArt = e.target.checked; render(); } if (e.target.id === 'power') render(); });
 document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.dataset && e.target.dataset.edit) { e.preventDefault(); startEdit(e.target); return; }
   const t = e.target, typing = /INPUT|TEXTAREA|SELECT/.test(t.tagName || '');
   if (!t.closest) return;
   if (ST.modal && e.key === 'Enter' && t.tagName !== 'TEXTAREA') { e.preventDefault(); saveModal(); render(); return; }
